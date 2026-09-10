@@ -73,10 +73,17 @@ export function render(lista, state) {
       ? `<span class="flagbadge">⚠ verificar entrada</span>`
       : `<span class="${f.rentabilidadePct >= 0 ? "ret-pos" : "ret-neg"}">${fmtPct(f.rentabilidadePct)}</span>`;
 
+    const isExpanded = expandedId === f.id;
+
     tr.innerHTML = `
       <td data-label="Fundo">
-        <div class="fund-name">${f.nome}</div>
-        <div class="fund-inst">${f.instituicao}</div>
+        <div class="fundo-cell-inner">
+          <div>
+            <div class="fund-name">${f.nome}</div>
+            <div class="fund-inst">${f.instituicao}</div>
+          </div>
+          <svg class="expand-chevron${isExpanded ? " open" : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
       </td>
       <td data-label="Categoria"><span class="tag tag-tipo">${TIPO_LABELS[f.tipo] || f.tipo}</span><span class="tag">${f.categoria}</span></td>
       <td data-label="Adicionado em" class="muted-cell">${f.dataAdicao ? fmtDateBR(f.dataAdicao) : "—"}</td>
