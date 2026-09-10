@@ -4,6 +4,7 @@ import {
   gerarSerieIlustrativa,
   gerarSerieBenchmarkIlustrativa,
   gerarBenchmarkPorPeriodo,
+  abreviarNome,
 } from "../lib/illustrative.js";
 
 const chartInstances = {};
@@ -18,6 +19,11 @@ export function renderDetailHtml(f) {
       <div class="evolucao-chart-wrap">
         <div class="evolucao-chart-canvas-box"><canvas id="chart-${f.id}"></canvas></div>
       </div>
+      ${
+        !f.dataAdicao
+          ? '<div class="bench-fx-note">Período de exemplo (8 meses) — este fundo ainda não tem data de adição registrada, então o gráfico não começa na data real de entrada.</div>'
+          : ""
+      }
     </div>
 
     <div class="detail-section">
@@ -59,8 +65,9 @@ export function initChart(f) {
   if (chartInstances[f.id]) chartInstances[f.id].destroy();
 
   const benchmarkName = BENCHMARK_POR_CATEGORIA[f.categoria] || "CDI";
-  const { labels, values } = gerarSerieIlustrativa(f.nome);
+  const { labels, values } = gerarSerieIlustrativa(f);
   const benchValues = gerarSerieBenchmarkIlustrativa(f.nome, values.length);
+  const fundLabel = abreviarNome(f.nome);
 
   chartInstances[f.id] = new Chart(canvas.getContext("2d"), {
     type: "line",
@@ -68,7 +75,7 @@ export function initChart(f) {
       labels,
       datasets: [
         {
-          label: "Fundo",
+          label: fundLabel,
           data: values,
           borderColor: "#002B56",
           backgroundColor: "transparent",

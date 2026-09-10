@@ -2,7 +2,7 @@
 // CACHE_VERSION (ex: para a data/hash do build) para forçar a invalidação do
 // cache antigo — sem isso, consultores continuariam vendo um cache obsoleto
 // depois de ficarem offline uma vez.
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const CACHE_NAME = `api-capital-fundos-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [

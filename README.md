@@ -66,6 +66,12 @@ No modo administrador, abra o fundo (clique na linha) e use o botão **"Editar d
 
 Quando o backend (API + Postgres, seção 9 da especificação) existir, trocar `src/state/store.js` (`persist()`/`hydrate()`) por chamadas HTTP é a única mudança necessária — os componentes já conversam só com as funções desse módulo, não direto com `localStorage`.
 
+## Gráfico de evolução e busca por CNPJ
+
+O painel de detalhes de cada fundo mostra um gráfico de evolução (fundo vs. benchmark da categoria) e uma tabela de rentabilidade por período (mês/YTD/12 meses), ambos marcados como **"exemplo ilustrativo"** — os dados são gerados de forma determinística a partir do nome do fundo (`src/lib/illustrative.js`), não são reais. O gráfico começa no mês da `data_adicao` real do fundo quando ela é conhecida; sem essa data, usa uma janela padrão de 8 meses e mostra um aviso explícito disso. Vira real assim que a integração com CVM (série histórica) e Banco Central/B3 (benchmarks) estiver pronta.
+
+A busca no topo (`searchInput`) já compara tanto por nome quanto por CNPJ (ignorando pontuação). Funciona de verdade só para os fundos que já têm `cnpjOuTicker` preenchido — preencha pelo "Editar dados do fundo".
+
 ## O que falta (em ordem sugerida)
 
 1. **Backend + banco de dados** (seção 9): API + Postgres com a tabela de fundos e a tabela de `historico_precos`. Sem isso, os dados não são compartilhados entre consultores.

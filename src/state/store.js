@@ -145,11 +145,16 @@ export function updateDiagnostico(id, texto) {
 export function fundosFiltrados() {
   const { tipo, categoria, busca, ordenacao } = state.filtro;
   const termo = busca.trim().toLowerCase();
+  const termoDigits = termo.replace(/\D/g, "");
 
   let lista = state.fundos.filter((f) => {
     if (tipo !== "Todos" && f.tipo !== tipo) return false;
     if (categoria !== "Todos" && f.categoria !== categoria) return false;
-    if (termo && !f.nome.toLowerCase().includes(termo)) return false;
+    if (termo) {
+      const matchNome = f.nome.toLowerCase().includes(termo);
+      const matchCnpj = termoDigits && f.cnpjOuTicker && f.cnpjOuTicker.replace(/\D/g, "").includes(termoDigits);
+      if (!matchNome && !matchCnpj) return false;
+    }
     return true;
   });
 

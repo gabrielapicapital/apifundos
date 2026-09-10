@@ -26,13 +26,51 @@ function mockReturn(seed, salt, scale) {
   return (frac * 2 - 1) * scale;
 }
 
-export function gerarSerieIlustrativa(nome) {
-  const seed = seedFromName(nome);
-  const months = ["02/26", "03/26", "04/26", "05/26", "06/26", "07/26", "08/26", "09/26"];
+const DEFAULT_CHART_MONTHS = ["02/26", "03/26", "04/26", "05/26", "06/26", "07/26", "08/26", "09/26"];
+
+// dataAdicao pode estar em "DD/MM/AAAA" (dados do seed) ou "AAAA-MM-DD"
+// (fundos adicionados/editados pelo <input type="date">) — ver lib/format.js.
+function parseFundDate(dateStr) {
+  if (!dateStr) return null;
+  const [year, month, day] = dateStr.includes("-") ? dateStr.split("-").map(Number) : dateStr.split("/").reverse().map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+function monthRangeFrom(startDate, endDate) {
+  const labels = [];
+  let y = startDate.getFullYear();
+  let m = startDate.getMonth();
+  const endY = endDate.getFullYear();
+  const endM = endDate.getMonth();
+  while (y < endY || (y === endY && m <= endM)) {
+    labels.push(`${String(m + 1).padStart(2, "0")}/${String(y).slice(2)}`);
+    m++;
+    if (m > 11) {
+      m = 0;
+      y++;
+    }
+  }
+  return labels;
+}
+
+export function abreviarNome(nome, maxLen = 26) {
+  if (!nome) return "";
+  return nome.length > maxLen ? `${nome.slice(0, maxLen - 1).trim()}…` : nome;
+}
+
+// Se o fundo tem data_adicao conhecida, o gráfico começa nesse mês e vai até
+// hoje (mais pontos = mais meses de "histórico" ilustrativo). Sem data
+// conhecida, cai numa janela padrão de 8 meses só pra não ficar vazio — ver
+// aviso correspondente em benchmarkChart.js.
+export function gerarSerieIlustrativa(fundo) {
+  const seed = seedFromName(fundo.nome);
+  const entryDate = parseFundDate(fundo.dataAdicao);
+  const months = entryDate ? monthRangeFrom(entryDate, new Date()) : DEFAULT_CHART_MONTHS;
   const labels = [];
   const values = [];
   let v = 0;
-  const totalPoints = 160;
+  const totalPoints = Math.max(20, months.length * 20);
   for (let i = 0; i < totalPoints; i++) {
     const noise = mockReturn(seed + i * 7, i % 13, 1.1);
     const drift = (mockReturn(seed, 99, 1) / totalPoints) * 3;
