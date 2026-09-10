@@ -46,13 +46,13 @@ A especificação (seção 3) pede login restrito por e-mail (ex: Google OAuth c
 
 Como estado intermediário, o botão "Administrar" pede um e-mail e confere contra uma allowlist **no navegador**. Deixe claro para o time: **isso não é autenticação real** — qualquer pessoa pode digitar um e-mail da lista, já que não há verificação de identidade nenhuma por trás. É só a UI do fluxo pronta para o dia em que o backend existir.
 
-Para configurar os 2 e-mails sem editar código-fonte:
+Para configurar os e-mails sem editar `config.js`:
 
 ```bash
 cp public/admin-emails.local.json.example public/admin-emails.local.json
 ```
 
-e edite o arquivo com os e-mails reais. Esse arquivo é git-ignorado — cada ambiente (local, staging, produção) pode ter o seu.
+e edite o arquivo com os e-mails reais. **Esse arquivo precisa estar commitado no git** — como o app não tem backend nem build step, não existe outro jeito de essa lista chegar até a versão publicada (Vercel/Netlify/etc.); não é um segredo real (é só uma lista de e-mails, e a "autenticação" já é reconhecidamente frágil, ver acima), então commitar é aceitável nesta fase.
 
 **Quando o backend existir**, trocar esse gate por OAuth de verdade (Google, allowlist de e-mail no servidor) é o próximo passo antes de qualquer uso em produção com dados sensíveis.
 
