@@ -36,4 +36,10 @@ export const CATEGORIAS = [
 export const TIPOS = ["Todos", "Fundo", "ETF", "FIDC"];
 export const TIPO_LABELS = { Todos: "Todos", Fundo: "Fundos", ETF: "ETFs", FIDC: "FIDCs" };
 
+export function assetWord(tipo, plural) {
+  if (tipo === "ETF") return plural ? "ETFs" : "ETF";
+  if (tipo === "FIDC") return plural ? "FIDCs" : "FIDC";
+  return plural ? "fundos" : "fundo";
+}
+
 export const STORAGE_KEY = "api-capital-fundos-v1";

@@ -3,6 +3,11 @@ import { setEditMode, setAdminEmail } from "../state/store.js";
 
 let allowlist = [...ADMIN_EMAILS_PLACEHOLDER];
 
+const ICON_LOCKED =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>';
+const ICON_UNLOCKED =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.6-2.2"></path></svg>';
+
 async function loadLocalAllowlist() {
   try {
     const res = await fetch(new URL(ADMIN_EMAILS_LOCAL_CONFIG_URL, document.baseURI));
@@ -59,11 +64,11 @@ export function render(state) {
   const adminBtn = document.getElementById("adminBtn");
   const editBanner = document.getElementById("editBanner");
   if (state.editMode) {
-    adminBtn.textContent = "🔓 Administrador";
+    adminBtn.innerHTML = ICON_UNLOCKED + "<span>Administrador</span>";
     adminBtn.classList.add("on");
     editBanner.style.display = "flex";
   } else {
-    adminBtn.textContent = "🔒 Administrar";
+    adminBtn.innerHTML = ICON_LOCKED + "<span>Administrar</span>";
     adminBtn.classList.remove("on");
     editBanner.style.display = "none";
   }

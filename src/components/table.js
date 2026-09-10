@@ -2,6 +2,7 @@ import { fmtPct, fmtBRL, fmtDateBR, fmtNumber } from "../lib/format.js";
 import { TIPO_LABELS } from "../config.js";
 import { toggleExpanded, removeFundo, updateDiagnostico } from "../state/store.js";
 import * as editFundModal from "./editFundModal.js";
+import * as benchmarkChart from "./benchmarkChart.js";
 
 function detailHtml(f, editMode) {
   return `
@@ -30,6 +31,8 @@ function detailHtml(f, editMode) {
       </div>
     </div>
 
+    ${benchmarkChart.renderDetailHtml(f)}
+
     <div class="detail-section">
       <h4>Diagnóstico da equipe</h4>
       <div class="diagnostico-box">
@@ -53,6 +56,7 @@ function detailHtml(f, editMode) {
 export function render(lista, state) {
   const { editMode, expandedId } = state;
   document.getElementById("actionsHeader").style.display = editMode ? "table-cell" : "none";
+  document.getElementById("fundColHeader").textContent = state.filtro.tipo === "Todos" ? "Fundo" : state.filtro.tipo;
 
   const tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
@@ -91,6 +95,7 @@ export function render(lista, state) {
       detailTd.innerHTML = detailHtml(f, editMode);
       detailTr.appendChild(detailTd);
       tbody.appendChild(detailTr);
+      benchmarkChart.initChart(f);
     }
   });
 

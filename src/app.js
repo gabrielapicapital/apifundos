@@ -15,7 +15,7 @@ function renderAll(state) {
   adminAuth.render(state);
 
   const lista = fundosFiltrados();
-  summary.render(lista);
+  summary.render(lista, state.filtro.tipo);
   comparator.render(lista.filter((f) => !f.pendenteCorrecao));
   table.render(lista, state);
 }
