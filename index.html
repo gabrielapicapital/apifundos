@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>API Capital · Fundos Indicados</title>
 <meta name="description" content="Acompanhamento dos fundos indicados aos consultores da API Capital Investimentos.">
-<meta name="theme-color" content="#002B56">
+<meta name="theme-color" content="#0D2A54">
 
 <link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="https://design.apicapital.com.br/assets/favicon/svg/api_capital_favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="./public/icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="./public/icons/favicon-16.png">
 <link rel="apple-touch-icon" href="./public/icons/apple-touch-icon.png">
@@ -15,34 +16,26 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fundos API Capital">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://lebeninca.github.io/api-capital-design-system/tokens/api-capital.css">
 <link rel="stylesheet" href="./src/styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
-  <div class="header">
-    <div class="header-top">
-      <div class="brand">
-        <img src="./public/icons/icon-192.png" alt="API Capital" width="44" height="44">
-        <div class="brand-text">
-          <h1>API Capital Investimentos</h1>
-          <p>Fundos indicados · acompanhamento para consultores</p>
-        </div>
-      </div>
-      <div class="header-actions">
-        <div class="search-wrap">
-          <input id="searchInput" type="text" placeholder="Buscar por nome ou CNPJ...">
-        </div>
-        <button id="adminBtn" class="admin-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg><span>Administrar</span></button>
-      </div>
-    </div>
-  </div>
+  <header class="barra escura">
+    <img class="selo" src="./public/logo-pelicano-branco.svg" alt="API Capital">
+    <span class="titulo">Fundos Indicados</span>
+    <span class="vazio"></span>
+    <span class="busca">
+      <svg viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg>
+      <input id="searchInput" type="text" placeholder="Buscar por nome ou CNPJ...">
+    </span>
+    <button id="adminBtn" class="cheia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Administrar</span></button>
+  </header>
 
   <div class="install-hint" id="iosInstallHint">
-    <span>📲 No iPhone: toque em <strong>Compartilhar</strong> e depois em <strong>"Adicionar à Tela de Início"</strong> para instalar este app.</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><path d="M12 18h.01"></path></svg>
+    <span>No iPhone: toque em <strong>Compartilhar</strong> e depois em <strong>"Adicionar à Tela de Início"</strong> para instalar este app.</span>
     <button id="dismissInstallHint">Entendi</button>
   </div>
 
@@ -56,7 +49,7 @@
       <select id="sortSelect">
         <option value="ret-desc">Rentabilidade: maior primeiro</option>
         <option value="ret-asc">Rentabilidade: menor primeiro</option>
-        <option value="name-asc">Nome (A–Z)</option>
+        <option value="name-asc">Nome (A a Z)</option>
         <option value="cat-asc">Categoria</option>
       </select>
     </div>
@@ -64,10 +57,10 @@
 
   <div class="content">
     <div class="edit-banner" id="editBanner" style="display:none;">
-      <span>🔓 Modo administrador ativo — você pode adicionar ou remover fundos e editar diagnósticos.</span>
+      <span>Modo administrador ativo: você pode adicionar ou remover fundos e editar diagnósticos.</span>
       <div style="display:flex;gap:8px;">
-        <button class="add-fund-btn" id="openAddFund">+ Adicionar fundo</button>
-        <button class="admin-btn" id="exitEditBtn" style="border-color:#6b5300;color:#6b5300;">Sair do modo administrador</button>
+        <button class="api-botao-utilidade-cheio icon-btn" id="openAddFund"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg><span>Adicionar fundo</span></button>
+        <button class="api-botao-utilidade" id="exitEditBtn">Sair do modo administrador</button>
       </div>
     </div>
     <div class="banner" id="banner"></div>
@@ -95,7 +88,7 @@
     <div class="footer-note">
       Dados iniciais extraídos do relatório da carteira em 31/08/2026. "Preço de entrada" é travado na data em que o
       fundo é adicionado à lista, e "preço atual" é atualizado por uma fonte automática (CVM para fundos regulados,
-      B3 / provedor de mercado para ETFs) — nunca a partir de um aporte fixo por fundo. Fundos marcados como
+      B3 ou provedor de mercado para ETFs), nunca a partir de um aporte fixo por fundo. Fundos marcados como
       "pendente de correção" foram herdados da carteira antiga e aguardam recotação (ver seção 7 da especificação).
     </div>
   </div>
@@ -127,8 +120,8 @@
       <p class="modal-error" id="adminLoginError">E-mail não está na lista de administradores.</p>
       <p class="hint" id="adminConfigHint" style="display:none;">Nenhum administrador está configurado ainda. Veja o README (seção "Autenticação de administradores") para configurar.</p>
       <div class="modal-actions">
-        <button class="btn-secondary" id="cancelAdminLoginBtn">Cancelar</button>
-        <button class="btn-primary" id="confirmAdminLoginBtn">Entrar</button>
+        <button class="api-botao-utilidade" id="cancelAdminLoginBtn">Cancelar</button>
+        <button class="api-botao-utilidade-cheio" id="confirmAdminLoginBtn">Entrar</button>
       </div>
     </div>
   </div>
@@ -136,14 +129,14 @@
   <div class="modal-overlay hidden" id="addFundModal">
     <div class="modal-box">
       <h3>Adicionar fundo</h3>
-      <p class="sub">Preencha com a cota real do fundo na data da compra — isso evita o problema de rentabilidade distorcida.</p>
+      <p class="sub">Preencha com a cota real do fundo na data da compra. Isso evita o problema de rentabilidade distorcida.</p>
 
       <label>CNPJ ou ticker do fundo</label>
       <div style="display:flex;gap:8px;">
         <input type="text" id="newFundCnpj" placeholder="Ex: 12.345.678/0001-90 ou NASD11" style="flex:1;">
-        <button class="btn-primary" id="lookupCnpjBtn" style="flex:0 0 auto;padding:10px 16px;">Buscar</button>
+        <button class="api-botao-utilidade" id="lookupCnpjBtn" style="flex:0 0 auto;">Buscar</button>
       </div>
-      <p class="modal-error" id="cnpjStatus" style="display:none;color:var(--muted);"></p>
+      <p class="modal-error" id="cnpjStatus" style="display:none;color:var(--api-texto-fraco);"></p>
 
       <label>Nome do fundo</label>
       <input type="text" id="newFundName" placeholder="Ex: Sparta Max Advisory FIC FIM">
@@ -190,12 +183,12 @@
           <input type="number" step="0.0001" id="newFundQuota" placeholder="Ex: 2,1345">
         </div>
       </div>
-      <p class="hint">Consulte esse valor no informe diário da CVM (pelo CNPJ do fundo) ou na nota da corretora — nunca use um valor fixo como R$ 1.000,00.</p>
+      <p class="hint">Consulte esse valor no informe diário da CVM (pelo CNPJ do fundo) ou na nota da corretora. Nunca use um valor fixo como R$ 1.000,00.</p>
 
       <p class="modal-error" id="addFundError">Preencha nome, valor investido e cota da data corretamente.</p>
       <div class="modal-actions">
-        <button class="btn-secondary" id="cancelAddFundBtn">Cancelar</button>
-        <button class="btn-primary" id="confirmAddFundBtn">Adicionar</button>
+        <button class="api-botao-utilidade" id="cancelAddFundBtn">Cancelar</button>
+        <button class="api-botao-utilidade-cheio" id="confirmAddFundBtn">Adicionar</button>
       </div>
     </div>
   </div>
@@ -203,7 +196,7 @@
   <div class="modal-overlay hidden" id="editFundModal">
     <div class="modal-box">
       <h3>Editar dados do fundo</h3>
-      <p class="sub">Use isto para corrigir nome, categoria, data de adição ou preço de entrada — inclusive para tirar um fundo do estado "pendente de correção" quando a cota real for conhecida (seção 7 da especificação).</p>
+      <p class="sub">Use isto para corrigir nome, categoria, data de adição ou preço de entrada, inclusive para tirar um fundo do estado "pendente de correção" quando a cota real for conhecida (seção 7 da especificação).</p>
 
       <label>Nome do fundo</label>
       <input type="text" id="editFundName">
@@ -258,15 +251,15 @@
       </div>
       <p class="hint">Preencha "Valor investido" só se quiser recalcular a quantidade de cotas a partir do preço de entrada real (ex: ao corrigir um fundo pendente usando a nota de corretagem ou o valor real aportado). Deixe em branco para manter a quantidade de cotas atual.</p>
 
-      <label style="display:flex;align-items:center;gap:8px;margin-top:14px;">
-        <input type="checkbox" id="editFundFlag" style="width:auto;">
+      <label class="checkbox-row">
+        <input type="checkbox" id="editFundFlag">
         <span>Pendente de correção (preço de entrada ainda não confirmado)</span>
       </label>
 
       <p class="modal-error" id="editFundError">Preencha ao menos o nome e o preço atual corretamente.</p>
       <div class="modal-actions">
-        <button class="btn-secondary" id="cancelEditFundBtn">Cancelar</button>
-        <button class="btn-primary" id="confirmEditFundBtn">Salvar alterações</button>
+        <button class="api-botao-utilidade" id="cancelEditFundBtn">Cancelar</button>
+        <button class="api-botao-utilidade-cheio" id="confirmEditFundBtn">Salvar alterações</button>
       </div>
     </div>
   </div>

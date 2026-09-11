@@ -1,6 +1,7 @@
 import { fmtPct } from "../lib/format.js";
 import { resumo } from "../lib/analytics.js";
 import { TIPO_LABELS, assetWord } from "../config.js";
+import { ICON_TRIANGLE_ALERT } from "../lib/icons.js";
 
 export function render(lista, tipoAtivo) {
   const effectiveType = tipoAtivo === "Todos" ? "Fundo" : tipoAtivo;
@@ -11,7 +12,7 @@ export function render(lista, tipoAtivo) {
   // filtrada) para o time nunca perder de vista o tamanho do problema.
   if (flaggedTotalCount > 0) {
     banner.style.display = "flex";
-    banner.innerHTML = `<span>⚠️</span><span><strong>${flaggedTotalCount} fundo${flaggedTotalCount > 1 ? "s" : ""} com preço de entrada pendente de correção.</strong>
+    banner.innerHTML = `<span class="banner-icon">${ICON_TRIANGLE_ALERT}</span><span><strong>${flaggedTotalCount} fundo${flaggedTotalCount > 1 ? "s" : ""} com preço de entrada pendente de correção.</strong>
       Foram herdados da carteira antiga com um aporte fixo de R$ 1.000, sem registrar a cota real do dia, então a
       rentabilidade não pode ser calculada corretamente ainda. Assim que a cota de entrada for recotada (seção 7 da
       especificação), o cálculo passa a valer normalmente.</span>`;
@@ -26,8 +27,8 @@ export function render(lista, tipoAtivo) {
 
   document.getElementById("summaryCards").innerHTML = `
     <div class="summary-card"><div class="label">${labelPlural} na visão atual</div><div class="value">${lista.length}</div></div>
-    <div class="summary-card"><div class="label">Rentabilidade média</div><div class="value ${rentabilidadeMedia === null ? "" : rentabilidadeMedia >= 0 ? "pos" : "neg"}">${rentabilidadeMedia !== null ? fmtPct(rentabilidadeMedia) : "—"}</div></div>
+    <div class="summary-card"><div class="label">Rentabilidade média</div><div class="value ${rentabilidadeMedia === null ? "" : rentabilidadeMedia >= 0 ? "pos" : "neg"}">${rentabilidadeMedia !== null ? fmtPct(rentabilidadeMedia) : "-"}</div></div>
     <div class="summary-card"><div class="label">Positivos / negativos</div><div class="value"><span class="pos">${positivos}</span> / <span class="neg">${negativos}</span></div></div>
-    <div class="summary-card"><div class="label">Pendentes de correção</div><div class="value ${pendentes > 0 ? "amber" : ""}">${pendentes}</div></div>
+    <div class="summary-card"><div class="label">Pendentes de correção</div><div class="value ${pendentes > 0 ? "atencao" : ""}">${pendentes}</div></div>
   `;
 }

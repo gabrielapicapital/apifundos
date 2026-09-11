@@ -21,7 +21,7 @@ export function renderDetailHtml(f) {
       </div>
       ${
         !f.dataAdicao
-          ? '<div class="bench-fx-note">Período de exemplo (8 meses) — este fundo ainda não tem data de adição registrada, então o gráfico não começa na data real de entrada.</div>'
+          ? '<div class="bench-fx-note">Período de exemplo (8 meses): este fundo ainda não tem data de adição registrada, então o gráfico não começa na data real de entrada.</div>'
           : ""
       }
     </div>
@@ -54,7 +54,7 @@ export function renderDetailHtml(f) {
             .join("")}
         </tbody>
       </table>
-      ${b.benchmark === "S&P 500" ? '<div class="bench-fx-note">S&P 500 em USD, sem ajuste cambial — o fundo é cotado em reais.</div>' : ""}
+      ${b.benchmark === "S&P 500" ? '<div class="bench-fx-note">S&P 500 em USD, sem ajuste cambial: o fundo é cotado em reais.</div>' : ""}
     </div>
   `;
 }
@@ -77,24 +77,24 @@ export function initChart(f) {
         {
           label: fundLabel,
           data: values,
-          borderColor: "#002B56",
+          borderColor: "#0D2A54",
           backgroundColor: "transparent",
           borderWidth: 2,
           pointRadius: 0,
           pointHoverRadius: 4,
-          pointHoverBackgroundColor: "#002B56",
+          pointHoverBackgroundColor: "#0D2A54",
           tension: 0.25,
         },
         {
           label: benchmarkName,
           data: benchValues,
-          borderColor: "#C6493F",
+          borderColor: "#AA7D41",
           backgroundColor: "transparent",
           borderWidth: 2,
           borderDash: [5, 4],
           pointRadius: 0,
           pointHoverRadius: 4,
-          pointHoverBackgroundColor: "#C6493F",
+          pointHoverBackgroundColor: "#AA7D41",
           tension: 0.25,
         },
       ],
@@ -108,25 +108,27 @@ export function initChart(f) {
           display: true,
           position: "top",
           align: "start",
-          labels: { color: "#5B6472", boxWidth: 14, boxHeight: 2, font: { size: 12 }, usePointStyle: false },
+          labels: { color: "rgba(23,23,23,0.5)", boxWidth: 14, boxHeight: 2, font: { size: 12, family: "Inter" }, usePointStyle: false },
         },
         tooltip: {
           backgroundColor: "#fff",
-          titleColor: "#16202B",
-          bodyColor: "#16202B",
-          borderColor: "#E1E4E9",
+          titleColor: "#171717",
+          bodyColor: "#171717",
+          borderColor: "#E6E7E8",
           borderWidth: 1,
           padding: 10,
+          titleFont: { family: "Inter" },
+          bodyFont: { family: "Inter" },
           callbacks: {
             label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2).replace(".", ",")}%`,
           },
         },
       },
       scales: {
-        x: { grid: { display: false }, ticks: { color: "#5B6472", font: { size: 11 } } },
+        x: { grid: { display: false }, ticks: { color: "rgba(23,23,23,0.5)", font: { size: 11, family: "Inter" } } },
         y: {
-          grid: { color: "#EEF1F5" },
-          ticks: { color: "#5B6472", font: { size: 11 }, callback: (v) => v + "%" },
+          grid: { color: "#E6E7E8" },
+          ticks: { color: "rgba(23,23,23,0.5)", font: { size: 11, family: "Inter" }, callback: (v) => v + "%" },
         },
       },
     },

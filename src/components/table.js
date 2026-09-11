@@ -3,6 +3,7 @@ import { TIPO_LABELS } from "../config.js";
 import { toggleExpanded, removeFundo, updateDiagnostico } from "../state/store.js";
 import * as editFundModal from "./editFundModal.js";
 import * as benchmarkChart from "./benchmarkChart.js";
+import { ICON_CHEVRON_DOWN, ICON_TRIANGLE_ALERT, ICON_TRASH } from "../lib/icons.js";
 
 function detailHtml(f, editMode) {
   return `
@@ -21,7 +22,7 @@ function detailHtml(f, editMode) {
       <h4>Performance</h4>
       <div class="detail-grid">
         <div>Quantidade de cotas<span>${fmtNumber(f.quantidadeCotas)}</span></div>
-        <div>Preço de entrada<span>${f.precoEntrada != null ? fmtBRL(f.precoEntrada) : "—"}</span></div>
+        <div>Preço de entrada<span>${f.precoEntrada != null ? fmtBRL(f.precoEntrada) : "-"}</span></div>
         <div>Preço atual<span>${fmtBRL(f.precoAtual)}</span></div>
         <div>Rentabilidade desde a entrada<span>${
           f.pendenteCorrecao
@@ -70,7 +71,7 @@ export function render(lista, state) {
     };
 
     const retCell = f.pendenteCorrecao
-      ? `<span class="flagbadge">⚠ verificar entrada</span>`
+      ? `<span class="flagbadge">${ICON_TRIANGLE_ALERT}<span>verificar entrada</span></span>`
       : `<span class="${f.rentabilidadePct >= 0 ? "ret-pos" : "ret-neg"}">${fmtPct(f.rentabilidadePct)}</span>`;
 
     const isExpanded = expandedId === f.id;
@@ -82,15 +83,15 @@ export function render(lista, state) {
             <div class="fund-name">${f.nome}</div>
             <div class="fund-inst">${f.instituicao}</div>
           </div>
-          <svg class="expand-chevron${isExpanded ? " open" : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <span class="expand-chevron${isExpanded ? " open" : ""}">${ICON_CHEVRON_DOWN}</span>
         </div>
       </td>
       <td data-label="Categoria"><span class="tag tag-tipo">${TIPO_LABELS[f.tipo] || f.tipo}</span><span class="tag">${f.categoria}</span></td>
-      <td data-label="Adicionado em" class="muted-cell">${f.dataAdicao ? fmtDateBR(f.dataAdicao) : "—"}</td>
-      <td data-label="Preço de entrada" class="num">${f.precoEntrada != null ? fmtBRL(f.precoEntrada) : "—"}</td>
+      <td data-label="Adicionado em" class="muted-cell">${f.dataAdicao ? fmtDateBR(f.dataAdicao) : "-"}</td>
+      <td data-label="Preço de entrada" class="num">${f.precoEntrada != null ? fmtBRL(f.precoEntrada) : "-"}</td>
       <td data-label="Preço atual" class="num">${fmtBRL(f.precoAtual)}</td>
       <td data-label="Rentabilidade" class="num">${retCell}</td>
-      ${editMode ? `<td data-label="Ações" class="num"><button class="remove-btn" title="Remover fundo" data-remove="${f.id}">✕</button></td>` : ""}
+      ${editMode ? `<td data-label="Ações" class="num"><button class="remove-btn" title="Remover fundo" data-remove="${f.id}">${ICON_TRASH}</button></td>` : ""}
     `;
     tbody.appendChild(tr);
 

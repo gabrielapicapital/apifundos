@@ -17,15 +17,15 @@ export function init() {
   document.getElementById("cancelAddFundBtn").addEventListener("click", () => modal.classList.add("hidden"));
 
   // TODO(cvm): plugar a busca real por CNPJ/ticker (CVM para fundos/FIDCs,
-  // B3/provedor de cotação para ETFs — ver README > "Fontes de dados"). Por
+  // B3/provedor de cotação para ETFs, ver README > "Fontes de dados"). Por
   // enquanto isso é apenas um lembrete visual; os campos continuam
   // preenchíveis manualmente, como o fluxo já funciona hoje.
   document.getElementById("lookupCnpjBtn").addEventListener("click", () => {
     const statusEl = document.getElementById("cnpjStatus");
     statusEl.style.display = "block";
-    statusEl.style.color = "var(--muted)";
+    statusEl.style.color = "var(--api-texto-fraco)";
     statusEl.textContent =
-      "Integração com CVM/B3 ainda não conectada — preencha nome, instituição, categoria e cota manualmente (ver README).";
+      "Integração com CVM/B3 ainda não conectada: preencha nome, instituição, categoria e cota manualmente (ver README).";
   });
 
   document.getElementById("confirmAddFundBtn").addEventListener("click", () => {

@@ -4,6 +4,19 @@ App para consultores acompanharem os fundos indicados pela API Capital Investime
 
 **Status:** primeira fase — frontend PWA completo, com os dados reais dos 84 ativos, replicando o protótipo validado. Backend, integração CVM/B3 e autenticação real (OAuth) ainda não existem — ver "O que falta" abaixo.
 
+## Identidade visual
+
+O app consome o design system oficial da API Capital diretamente da folha publicada em
+`https://lebeninca.github.io/api-capital-design-system/tokens/api-capital.css` (ver `<link>` em
+`index.html`, antes de `src/styles.css`). Cor, tipografia, canto e espaço em `src/styles.css`
+usam sempre as variáveis `var(--api-*)` dessa folha, nunca um valor escrito à mão. Logo e ícones
+vêm de `design.apicapital.com.br/assets/`. Antes desse adendo, o app usava uma paleta estimada
+manualmente (azul `#002B56` e Fraunces/IBM Plex Sans) — isso foi substituído por completo.
+
+Ao mexer no visual, siga o catálogo de vetos (`ANTI_SLOP_VISUAL.md` da skill "api-capital"): sem
+sombra, sem gradiente em elemento de interface, canto sempre 15px (ou 10px em botão de
+utilidade), sem emoji (usar Lucide), sem travessão no texto da peça.
+
 ## Por que não é um projeto React/Vite
 
 A especificação sugere React (seção 9), mas esta máquina não tem Node.js/npm instalado, então o app foi escrito em **JavaScript puro com módulos ES nativos do navegador — sem build step**. Isso também tem uma vantagem real para um app interno de 10–50 usuários: hospedar e atualizar é só servir arquivos estáticos, sem pipeline de build. Se depois quiserem migrar para React (por exemplo, para reaproveitar mais lógica ao construir o backend em conjunto), a estrutura em `src/` já separa dados, estado e componentes o suficiente para isso ser uma reescrita incremental, não um recomeço.
