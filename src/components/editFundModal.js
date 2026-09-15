@@ -3,8 +3,18 @@ import { toISODate } from "../lib/format.js";
 
 const modal = () => document.getElementById("editFundModal");
 
+function syncPendenteFromEntry() {
+  const entry = document.getElementById("editFundEntry").value;
+  document.getElementById("editFundFlag").checked = entry === "";
+}
+
 export function init() {
   document.getElementById("cancelEditFundBtn").addEventListener("click", () => modal().classList.add("hidden"));
+
+  // Digitar um preço de entrada já desmarca "pendente de correção" sozinho —
+  // antes disso, quem preenchia a cota real esquecia de tirar a marcação
+  // manualmente e o fundo continuava aparecendo como pendente.
+  document.getElementById("editFundEntry").addEventListener("input", syncPendenteFromEntry);
 
   document.getElementById("confirmEditFundBtn").addEventListener("click", () => {
     const id = modal().dataset.fundoId;
@@ -55,7 +65,7 @@ export function open(fundo) {
   document.getElementById("editFundEntry").value = fundo.precoEntrada ?? "";
   document.getElementById("editFundCurrent").value = fundo.precoAtual;
   document.getElementById("editFundValue").value = "";
-  document.getElementById("editFundFlag").checked = fundo.pendenteCorrecao;
+  syncPendenteFromEntry();
   document.getElementById("editFundError").style.display = "none";
   modal().classList.remove("hidden");
 }
