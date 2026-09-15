@@ -216,12 +216,42 @@ tbody tr:hover .expand-chevron svg{color:var(--api-azul);}
 .bench-illustrative-tag{display:inline-block;font-size:11px;background:var(--api-fundo-quente);color:var(--api-azul);padding:2px 8px;border-radius:var(--api-canto-ferramenta);margin-left:8px;font-weight:500;}
 .bench-fx-note{margin-top:8px;font-size:12px;color:var(--api-texto-fraco);}
 .bench-table{width:100%;border-collapse:collapse;margin-top:6px;}
-.bench-table th{text-align:center;font-size:11.5px;font-weight:500;color:var(--api-texto-fraco);padding:6px 8px;}
+.bench-table th{text-align:center;font-size:11.5px;font-weight:500;color:var(--api-sobre-escuro);padding:6px 8px;}
 .bench-table td{padding:7px 8px;font-size:var(--api-corpo-pequeno-font-size);text-align:center;}
 .bench-table tbody tr:nth-child(odd){background:var(--api-fundo-bloco);}
 
 .evolucao-chart-wrap{background:var(--api-fundo);border-radius:var(--api-canto-ferramenta);padding:12px 14px 6px;margin-top:6px;}
 .evolucao-chart-canvas-box{position:relative;height:240px;}
+
+/* ---- Calendário customizado (substitui input[type=date] no modal Adicionar fundo) ---- */
+.custom-date-field{position:relative;}
+.custom-date-wrap{position:relative;}
+.custom-date-wrap input#newFundDateDisplay{padding-right:40px;cursor:pointer;background:var(--api-fundo);}
+.custom-date-icon-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;padding:7px;cursor:pointer;color:var(--api-texto-fraco);display:flex;}
+.custom-date-icon-btn:hover{color:var(--api-azul);}
+.custom-date-icon-btn svg{width:18px;height:18px;}
+
+.custom-date-panel{position:absolute;top:calc(100% + 6px);left:0;z-index:40;background:var(--api-fundo);border:1px solid var(--api-borda);border-radius:var(--api-canto-ferramenta);padding:var(--api-x4);width:280px;}
+.custom-date-panel.hidden{display:none;}
+.cdp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cdp-header button{background:none;border:none;cursor:pointer;color:var(--api-azul);padding:4px 8px;border-radius:var(--api-canto-ferramenta);display:flex;align-items:center;}
+.cdp-header button:hover{background:var(--api-fundo-bloco);}
+.cdp-month-label{font-weight:600;color:var(--api-azul);font-size:14px;text-transform:capitalize;}
+.cdp-clickable{cursor:pointer;padding:2px 8px;border-radius:var(--api-canto-ferramenta);}
+.cdp-clickable:hover{background:var(--api-fundo-bloco);}
+.cdp-grid-12{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px 0;}
+.cdp-month-cell, .cdp-year-cell{padding:10px 4px;font-size:13px;border-radius:var(--api-canto-ferramenta);}
+.cdp-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}
+.cdp-weekdays span{text-align:center;font-size:11px;color:var(--api-texto-fraco);font-weight:600;}
+.cdp-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cdp-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:13px;border-radius:var(--api-canto-ferramenta);cursor:pointer;color:var(--api-texto);background:none;border:none;font-family:inherit;}
+.cdp-day:hover{background:var(--api-fundo-bloco);}
+.cdp-day.other-month{color:var(--api-texto-fraco);opacity:.6;}
+.cdp-day.today{font-weight:700;color:var(--api-azul);}
+.cdp-day.selected{background:var(--api-azul);color:var(--api-sobre-escuro);font-weight:600;}
+.cdp-footer{margin-top:10px;padding-top:10px;border-top:1px solid var(--api-borda);text-align:center;}
+.cdp-today-link{background:none;border:none;color:var(--api-azul);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+.cdp-today-link:hover{text-decoration:underline;}
 
 .footer-note{max-width:1180px;margin:22px auto 0;padding:0 var(--api-x6);font-size:12.5px;color:var(--api-texto-fraco);line-height:1.6;}
 

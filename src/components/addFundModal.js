@@ -1,15 +1,27 @@
 import { addFundo, backfillFundo } from "../state/store.js";
 import { fmtDateBR, fmtNumber } from "../lib/format.js";
+import { attachCalendar } from "./dateCalendar.js";
 
 export function init() {
   const modal = document.getElementById("addFundModal");
+
+  // O calendário só controla a UI (texto dd/mm/aaaa + painel de navegação):
+  // #newFundDate continua sendo o input hidden em ISO que todo o resto do
+  // código já lia/escrevia antes — nenhuma lógica de busca/salvamento muda.
+  const calendar = attachCalendar({
+    hiddenInputId: "newFundDate",
+    displayInputId: "newFundDateDisplay",
+    btnId: "newFundDateBtn",
+    panelId: "newFundDatePanel",
+  });
 
   document.getElementById("openAddFund").addEventListener("click", () => {
     ["newFundName", "newFundValue", "newFundQuota", "newFundCnpj"].forEach(
       (id) => (document.getElementById(id).value = "")
     );
     document.getElementById("newFundInst").value = "Banco BTG Pactual";
-    document.getElementById("newFundDate").value = new Date().toISOString().slice(0, 10);
+    calendar.setValueSilently(new Date().toISOString().slice(0, 10));
+    calendar.close();
     document.getElementById("addFundError").style.display = "none";
     document.getElementById("cnpjStatus").style.display = "none";
     buscaJaIniciada = false;
@@ -75,7 +87,7 @@ export function init() {
           const cotaFmt = fmtNumber(dados.primeiraDisponivel.cota, 6);
           statusEl.innerHTML = `Esse fundo só tem cota registrada na CVM a partir de ${dataFmt} (R$ ${cotaFmt}). A data escolhida é anterior ao início do fundo.<br><button type="button" id="usarPrimeiraDataBtn" class="api-botao-utilidade" style="margin-top:6px;">Usar ${dataFmt}</button>`;
           document.getElementById("usarPrimeiraDataBtn").addEventListener("click", () => {
-            document.getElementById("newFundDate").value = dados.primeiraDisponivel.data;
+            calendar.setValueSilently(dados.primeiraDisponivel.data);
             document.getElementById("newFundQuota").value = dados.primeiraDisponivel.cota;
             statusEl.style.color = "var(--api-ok)";
             statusEl.textContent = `Fundo encontrado. Cota de ${dados.primeiraDisponivel.data} preenchida.`;
