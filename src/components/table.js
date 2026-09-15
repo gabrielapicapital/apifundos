@@ -23,7 +23,7 @@ function detailHtml(f, editMode) {
       <div class="detail-grid">
         <div>Quantidade de cotas<span>${fmtNumber(f.quantidadeCotas)}</span></div>
         <div>Preço de entrada<span>${f.precoEntrada != null ? fmtBRL(f.precoEntrada) : "-"}</span></div>
-        <div>Preço atual<span>${fmtBRL(f.precoAtual)}</span></div>
+        <div>Preço atual<span>${fmtBRL(f.precoAtual)}</span>${f.tipo === "FIDC" ? `<span id="fidc-nota-${f.id}" class="pending"></span>` : ""}</div>
         <div>Rentabilidade desde a entrada<span>${
           f.pendenteCorrecao
             ? '<span class="pending">verificar entrada</span>'

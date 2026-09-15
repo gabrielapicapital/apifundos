@@ -67,14 +67,20 @@ export function init() {
       document.getElementById("newFundName").value = dados.nome;
       document.getElementById("newFundInst").value = dados.instituicao;
       document.getElementById("newFundCat").value = dados.categoria;
-      document.getElementById("newFundTipo").value = "Fundo";
+      // Só chega "mensal" quando o Informe Diário não achou nada — na
+      // prática, sempre um FIDC (é o único caso sem cota diária na CVM).
+      document.getElementById("newFundTipo").value = dados.mensal ? "FIDC" : "Fundo";
 
       if (dados.cota != null) {
         document.getElementById("newFundQuota").value = dados.cota;
         statusEl.style.color = "var(--api-ok)";
-        statusEl.textContent = dados.aproximado
-          ? `Fundo encontrado. Cota de ${dados.dataCota} preenchida (data exata não tinha pregão).`
-          : `Fundo encontrado. Cota de ${dados.dataCota} preenchida.`;
+        if (dados.mensal) {
+          statusEl.textContent = `Fundo encontrado. FIDC não tem cota diária na CVM — usando o fechamento mensal mais próximo (${dados.dataCota}). Confira se está correto.`;
+        } else {
+          statusEl.textContent = dados.aproximado
+            ? `Fundo encontrado. Cota de ${dados.dataCota} preenchida (data exata não tinha pregão).`
+            : `Fundo encontrado. Cota de ${dados.dataCota} preenchida.`;
+        }
       } else {
         document.getElementById("newFundQuota").value = "";
         statusEl.style.color = "var(--api-erro)";

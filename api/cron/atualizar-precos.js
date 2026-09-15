@@ -1,6 +1,7 @@
 import { sql } from "../_lib/db.js";
 import { buscarCotaMaisRecente } from "../_lib/cvm.js";
 import { buscarCotacaoEtf } from "../_lib/mercado.js";
+import { buscarCotaFidcMaisRecente } from "../_lib/cvmFidc.js";
 
 // Vercel chama essa rota sozinha, no horário definido em vercel.json
 // ("crons"), enviando Authorization: Bearer <CRON_SECRET> automaticamente
@@ -38,6 +39,14 @@ export default async function handler(req, res) {
         if (r) {
           cota = r.cota;
           data = r.data;
+        } else if (f.tipo === "FIDC") {
+          // FIDC não tem Informe Diário — último recurso é o Informe Mensal
+          // (atraso de vários meses, ver api/_lib/cvmFidc.js).
+          const rMensal = await buscarCotaFidcMaisRecente(f.cnpj_ou_ticker);
+          if (rMensal) {
+            cota = rMensal.cota;
+            data = rMensal.data;
+          }
         }
       }
 

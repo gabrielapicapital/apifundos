@@ -1,6 +1,7 @@
 import { sql } from "./db.js";
 import { fetchInformeMes, mesesEntre, normalizeCnpj } from "./cvm.js";
 import { buscarSerieYahoo, buscarCdiSerieIndice } from "./mercado.js";
+import { buscarSerieFidcMensal } from "./cvmFidc.js";
 
 // Lógica compartilhada entre o backfill em lote (api/backfill-historico.js,
 // todos os fundos de uma vez) e o backfill de um fundo só, disparado na hora
@@ -105,6 +106,26 @@ export async function coletarHistoricoCvm(alvoCvm, hoje, erros, concorrencia = 6
           }
         }
       }
+    }
+  }
+
+  // A maioria dos FIDCs não publica Informe Diário — pra esses, o Informe
+  // Mensal (ver cvmFidc.js) é o último recurso: série mais esparsa (um ponto
+  // por mês, com atraso de publicação de vários meses), mas ainda é dado
+  // real, não ilustrativo.
+  const fidcsSemDado = alvoCvm.filter((f) => f.tipo === "FIDC" && !ultimaCotaPorFundo.has(f.id));
+  for (const f of fidcsSemDado) {
+    try {
+      const serie = await buscarSerieFidcMensal(f.cnpjOuTicker, f.inicio, hoje);
+      for (const p of serie) {
+        if (p.data >= f.inicio && p.data <= hoje) {
+          linhasParaGravar.push({ fundoId: f.id, data: p.data, preco: p.valor });
+          const atual = ultimaCotaPorFundo.get(f.id);
+          if (!atual || p.data > atual.data) ultimaCotaPorFundo.set(f.id, { data: p.data, cota: p.valor });
+        }
+      }
+    } catch (err) {
+      erros.push({ fundo: f.id, erro: err.message });
     }
   }
 

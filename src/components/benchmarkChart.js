@@ -1,4 +1,4 @@
-import { fmtPct } from "../lib/format.js";
+import { fmtPct, fmtDateBR } from "../lib/format.js";
 import {
   BENCHMARK_POR_CATEGORIA as BENCH_ILUSTRATIVO,
   gerarSerieIlustrativa,
@@ -219,6 +219,17 @@ export async function initChart(f) {
   // A troca de painel (fechar/abrir outro fundo) pode acontecer antes da
   // resposta chegar — se o canvas já não existe mais, não faz nada.
   if (!document.getElementById(`chart-${f.id}`)) return;
+
+  // FIDC não tem Informe Diário na CVM — a cota que a gente consegue é a do
+  // fechamento mensal, com atraso de publicação de vários meses (ver
+  // api/_lib/cvmFidc.js). Deixa claro que "preço atual" aqui não é de hoje.
+  if (f.tipo === "FIDC") {
+    const notaEl = document.getElementById(`fidc-nota-${f.id}`);
+    if (notaEl && historicoFundo.length) {
+      const ultima = [...historicoFundo].sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0)).pop();
+      notaEl.textContent = `Cota de ${fmtDateBR(ultima.data)} (dado mensal da CVM — FIDC não publica cota diária, esse é o último valor disponível até o momento)`;
+    }
+  }
 
   let mostrouReal = false;
   if (historicoFundo.length >= MINIMO_PONTOS_REAIS && historicoBench.length >= MINIMO_PONTOS_REAIS) {

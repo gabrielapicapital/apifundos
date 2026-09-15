@@ -1,4 +1,5 @@
 import { fetchCadastro, classeCvmParaCategoria, buscarCotaPorCnpjData, buscarPrimeiraCotaAposData, normalizeCnpj } from "./_lib/cvm.js";
+import { buscarCotaFidcPorData } from "./_lib/cvmFidc.js";
 
 // GET /api/cvm-lookup?cnpj=12345678000190&data=2026-09-10
 // Usado pelo modal "Adicionar fundo": busca nome/instituição/categoria no
@@ -25,10 +26,11 @@ export default async function handler(req, res) {
   try {
     // Cadastro (nome/instituição) e cota vêm de arquivos diferentes da CVM —
     // buscar os dois ao mesmo tempo em vez de um depois do outro.
-    const [cadastro, cotaInfo] = await Promise.all([
+    const [cadastro, cotaInicial] = await Promise.all([
       fetchCadastro(),
       buscarCotaPorCnpjData(cnpjDigits, data),
     ]);
+    let cotaInfo = cotaInicial;
     const registro = cadastro.get(cnpjDigits);
     if (!registro) {
       res.status(404).json({ error: "CNPJ não encontrado no cadastro de fundos da CVM." });
@@ -40,8 +42,19 @@ export default async function handler(req, res) {
     // primeira cota disponível a partir dali pra diferenciar os dois casos e
     // já sugerir a data certa em vez de só dizer "não achei".
     let primeiraDisponivel = null;
+    let mensal = false;
     if (!cotaInfo) {
       primeiraDisponivel = await buscarPrimeiraCotaAposData(cnpjDigits, data);
+    }
+    // FIDC não tem Informe Diário — último recurso é o Informe Mensal (ver
+    // api/_lib/cvmFidc.js), que só dá o fechamento do mês mais próximo, com
+    // atraso de publicação de vários meses.
+    if (!cotaInfo && !primeiraDisponivel) {
+      const fidcRow = await buscarCotaFidcPorData(cnpjDigits, data);
+      if (fidcRow) {
+        cotaInfo = { data: fidcRow.data, cota: fidcRow.cota, aproximado: true };
+        mensal = true;
+      }
     }
 
     res.status(200).json({
@@ -51,6 +64,7 @@ export default async function handler(req, res) {
       cota: cotaInfo ? cotaInfo.cota : null,
       dataCota: cotaInfo ? cotaInfo.data : null,
       aproximado: cotaInfo ? cotaInfo.aproximado : null,
+      mensal,
       primeiraDisponivel,
     });
   } catch (err) {
