@@ -23,14 +23,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const cadastro = await fetchCadastro();
+    // Cadastro (nome/instituição) e cota vêm de arquivos diferentes da CVM —
+    // buscar os dois ao mesmo tempo em vez de um depois do outro.
+    const [cadastro, cotaInfo] = await Promise.all([
+      fetchCadastro(),
+      buscarCotaPorCnpjData(cnpjDigits, data),
+    ]);
     const registro = cadastro.get(cnpjDigits);
     if (!registro) {
       res.status(404).json({ error: "CNPJ não encontrado no cadastro de fundos da CVM." });
       return;
     }
-
-    const cotaInfo = await buscarCotaPorCnpjData(cnpjDigits, data);
 
     res.status(200).json({
       nome: registro.nome,
