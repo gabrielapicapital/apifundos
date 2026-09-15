@@ -7,6 +7,7 @@ import {
   coletarHistoricoCvm,
   coletarHistoricoEtf,
   garantirBenchmark,
+  limparHistoricoAntesDe,
 } from "./_lib/backfill.js";
 
 // Backfill retroativo de TODOS os fundos com cnpjOuTicker + dataAdicao —
@@ -27,6 +28,7 @@ export default async function handler(req, res) {
     tipo: f.tipo,
     categoria: f.categoria,
     cnpjOuTicker: f.cnpj_ou_ticker,
+    dataAdicao: f.data_adicao.toISOString().slice(0, 10),
     inicio: limitarInicio(f.data_adicao.toISOString().slice(0, 10), hoje),
   }));
 
@@ -38,9 +40,17 @@ export default async function handler(req, res) {
   relatorio.pontosGravados += await gravarHistoricoEmLotes(linhasCvm);
 
   const alvoEtf = alvo.filter((f) => f.tipo === "ETF");
-  const { linhasParaGravar: linhasEtf, ultimaCotaPorFundo: ultimaEtf } = await coletarHistoricoEtf(alvoEtf, hoje, relatorio.erros);
+  const { linhasParaGravar: linhasEtf, ultimaCotaPorFundo: ultimaEtf, primeiraDataValidaPorFundo } = await coletarHistoricoEtf(alvoEtf, hoje, relatorio.erros);
   relatorio.fundosEtf = ultimaEtf.size;
   relatorio.pontosGravados += await gravarHistoricoEmLotes(linhasEtf);
+
+  // Limpa linha antigas de um backfill anterior que ficaram no "patamar"
+  // espúrio da Yahoo (ver buscarSerieYahoo) — agora que sabemos onde a
+  // cota real de fato começa.
+  for (const f of alvoEtf) {
+    const primeiraValida = primeiraDataValidaPorFundo.get(f.id);
+    if (primeiraValida) await limparHistoricoAntesDe(f.id, primeiraValida, f.dataAdicao);
+  }
 
   // Atualiza preco_atual/patrimonio de cada fundo com a cota real mais
   // recente que a gente acabou de baixar (em vez de deixar travado no preço

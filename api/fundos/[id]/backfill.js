@@ -7,6 +7,7 @@ import {
   coletarHistoricoCvm,
   coletarHistoricoEtf,
   garantirBenchmark,
+  limparHistoricoAntesDe,
 } from "../../_lib/backfill.js";
 
 // POST /api/fundos/{id}/backfill — versão de UM fundo só do backfill em
@@ -51,6 +52,11 @@ export default async function handler(req, res) {
       : await coletarHistoricoCvm([alvo], hoje, relatorio.erros);
 
   relatorio.pontosGravados = await gravarHistoricoEmLotes(coleta.linhasParaGravar);
+
+  if (f.tipo === "ETF") {
+    const primeiraValida = coleta.primeiraDataValidaPorFundo?.get(f.id);
+    if (primeiraValida) await limparHistoricoAntesDe(f.id, primeiraValida, f.data_adicao.toISOString().slice(0, 10));
+  }
 
   const ultima = coleta.ultimaCotaPorFundo.get(f.id);
   if (ultima) {

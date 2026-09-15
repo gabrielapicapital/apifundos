@@ -55,6 +55,42 @@ export async function buscarCotacaoEtf(ticker) {
   return null;
 }
 
+// Quando a Yahoo não tem cota real de um ticker desde a data pedida (comum
+// em ETFs pouco negociados/listados há pouco tempo na B3), ela não devolve
+// null pros dias sem dado — ela "preenche" repetindo o mesmo valor (o
+// primeiro que ela tem) pra trás, dia após dia, como se o preço tivesse
+// ficado parado por meses. Isso não é rentabilidade real: um patamar de
+// dezenas de valores idênticos bit-a-bit logo no início da série (às vezes
+// com um "furo" isolado no meio, também espúrio) é a assinatura desse
+// preenchimento. Descarta esse trecho suspeito inteiro, ficando só com a
+// série a partir de onde a cota realmente passa a variar dia a dia.
+function removerPatamarInicial(pontos) {
+  if (pontos.length < 10) return pontos;
+  const janela = Math.min(pontos.length, 150);
+  const contagem = new Map();
+  for (let i = 0; i < janela; i++) {
+    const v = pontos[i].valor;
+    contagem.set(v, (contagem.get(v) || 0) + 1);
+  }
+  let valorPatamar = null;
+  let maxContagem = 0;
+  for (const [v, c] of contagem) {
+    if (c > maxContagem) {
+      maxContagem = c;
+      valorPatamar = v;
+    }
+  }
+  // só mexe se o "patamar" for realmente o começo da série (senão pode ser
+  // só uma cota que coincidentemente se repetiu no meio de dado real).
+  if (maxContagem < 10 || pontos[0].valor !== valorPatamar) return pontos;
+
+  let ultimoIndice = -1;
+  for (let i = 0; i < pontos.length; i++) {
+    if (pontos[i].valor === valorPatamar) ultimoIndice = i;
+  }
+  return pontos.slice(ultimoIndice + 1);
+}
+
 // Série de fechamentos diários num intervalo — usada tanto pra ETF quanto
 // pros índices de benchmark (Ibovespa, S&P 500).
 export async function buscarSerieYahoo(ticker, dataInicialISO, dataFinalISO) {
@@ -74,5 +110,5 @@ export async function buscarSerieYahoo(ticker, dataInicialISO, dataFinalISO) {
     const d = new Date(timestamps[i] * 1000);
     pontos.push({ data: d.toISOString().slice(0, 10), valor: closes[i] });
   }
-  return pontos;
+  return removerPatamarInicial(pontos);
 }

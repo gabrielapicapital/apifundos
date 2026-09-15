@@ -112,9 +112,15 @@ export async function coletarHistoricoCvm(alvoCvm, hoje, erros, concorrencia = 6
 }
 
 // Mesma ideia para ETFs, via Yahoo Finance (uma chamada leve por ticker).
+// buscarSerieYahoo já descarta o "patamar" inicial espúrio (ver comentário
+// lá) quando a Yahoo não tem dado real desde a data pedida — por isso a
+// série pode começar bem depois de `f.inicio`. `primeiraDataValidaPorFundo`
+// devolve onde ela realmente começou, pra quem chamar poder limpar linhas
+// antigas (do patamar) que já tinham sido gravadas por um backfill anterior.
 export async function coletarHistoricoEtf(alvoEtf, hoje, erros) {
   const linhasParaGravar = [];
   const ultimaCotaPorFundo = new Map();
+  const primeiraDataValidaPorFundo = new Map();
 
   const series = await Promise.all(
     alvoEtf.map((f) =>
@@ -127,6 +133,7 @@ export async function coletarHistoricoEtf(alvoEtf, hoje, erros) {
     )
   );
   for (const { f, serie } of series) {
+    if (serie.length) primeiraDataValidaPorFundo.set(f.id, serie[0].data);
     for (const p of serie) {
       linhasParaGravar.push({ fundoId: f.id, data: p.data, preco: p.valor });
       const atual = ultimaCotaPorFundo.get(f.id);
@@ -134,7 +141,19 @@ export async function coletarHistoricoEtf(alvoEtf, hoje, erros) {
     }
   }
 
-  return { linhasParaGravar, ultimaCotaPorFundo };
+  return { linhasParaGravar, ultimaCotaPorFundo, primeiraDataValidaPorFundo };
+}
+
+// Remove linhas antigas de historico_precos que ficaram desatualizadas ou
+// erradas de uma busca anterior (ex: o "patamar" espúrio da Yahoo, ver
+// buscarSerieYahoo) — preserva o ponto na data de adição do fundo, que
+// representa a cota real conhecida naquele dia mesmo quando é anterior ao
+// início validado agora.
+export async function limparHistoricoAntesDe(fundoId, dataLimiteISO, dataAdicaoISO) {
+  await sql`
+    DELETE FROM historico_precos
+    WHERE fundo_id = ${fundoId} AND data < ${dataLimiteISO} AND data != ${dataAdicaoISO}
+  `;
 }
 
 // Busca (e grava) o histórico de um benchmark só se ainda não tiver
