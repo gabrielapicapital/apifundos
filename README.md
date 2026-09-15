@@ -97,19 +97,24 @@ No modo administrador, abra o fundo (clique na linha) e use o botão **"Editar d
 - **Busca por CNPJ** no modal "Adicionar fundo": chama `api/cvm-lookup.js`, que consulta o cadastro da CVM (registro atual por classe de cotas + cadastro legado, ver comentário no arquivo) e a cota na data da compra. Só cobre Fundo/FIDC — ETF não tem CNPJ na CVM, usa ticker (seção 6 da especificação).
 - Fundos **sem `cnpjOuTicker`** não são cobertos por nenhuma das duas — preencha esse campo em "Editar dados do fundo" pra passar a cobrir.
 
-## Gráfico de evolução (ainda ilustrativo)
+## Gráfico de evolução (dado real, com backfill retroativo)
 
-O painel de detalhes de cada fundo mostra um gráfico de evolução (fundo vs. benchmark da categoria) e uma tabela de rentabilidade por período, ambos marcados como **"exemplo ilustrativo"** — os dados vêm de `src/lib/illustrative.js`, gerados de forma determinística a partir do nome do fundo, não são reais. Isso é proposital: a rotina diária começou a gravar `historico_precos` de verdade agora, mas ainda não há profundidade suficiente (semanas/meses) pra calcular rentabilidade por período ou traçar um gráfico honesto (especificação seção 8: "nenhuma dessas métricas deve ser mostrada antes de haver histórico real suficiente"). Trocar pro dado real é questão de esperar o histórico acumular e então atualizar `benchmarkChart.js` para consumir `GET /api/fundos/{id}` em vez de `gerarSerieIlustrativa`.
+O painel de detalhes de cada fundo mostra um gráfico de evolução (fundo vs. benchmark da categoria) e uma tabela de rentabilidade por período. Desde que o fundo tenha `cnpjOuTicker` e `dataAdicao` preenchidos, esses dois usam **dado real**: a CVM mantém o histórico diário de cotas desde o início do fundo, então não é preciso esperar a rotina diária acumular semanas de dados a partir de hoje — dá pra reconstruir o histórico retroativamente até a data em que o fundo foi comprado.
+
+- `POST /api/backfill-historico.js` (admin, `maxDuration: 300`) varre todos os fundos com `cnpjOuTicker` + `dataAdicao`, calcula os meses de Informe Diário da CVM necessários (limitado a 13 meses de profundidade pra manter o volume de download previsível), baixa cada mês **uma única vez** e distribui as cotas pra todos os fundos daquele mês, grava tudo em lote em `historico_precos`. Pra ETF usa o histórico do Yahoo Finance. Também grava o histórico do benchmark de cada categoria (CDI via Banco Central, Ibovespa/S&P 500 via Yahoo) em `benchmark_historico`. É idempotente (upsert por `fundo_id + data`) — pode rodar de novo quando mais fundos ganharem `cnpjOuTicker`/`dataAdicao`.
+- `GET /api/benchmark.js?nome=CDI|Ibovespa|S%26P%20500` expõe o histórico do benchmark (leitura pública, sem admin).
+- `src/lib/periodos.js` calcula a rentabilidade por período (mês / YTD / 12 meses) a partir da série real — segue a mesma regra da especificação seção 8: se a janela pedida começa antes do primeiro ponto real disponível, a célula mostra "sem histórico suficiente" em vez de extrapolar.
+- `src/components/benchmarkChart.js` busca `historico_precos` (`store.buscarHistorico`) e o benchmark (`store.buscarBenchmark`) ao expandir um fundo; se houver pontos reais suficientes (5+) dos dois lados, renderiza gráfico e tabela reais. Caso contrário (fundo sem `cnpjOuTicker`/`dataAdicao`, ou ainda sem cobertura), cai de volta pro **exemplo ilustrativo** de `src/lib/illustrative.js`, com a mesma etiqueta "exemplo ilustrativo" de antes.
+- A rotina diária (`api/cron/atualizar-precos.js`) continua rodando normalmente e apenas adiciona o ponto do dia em cima do que o backfill já gravou.
 
 A busca no topo (`searchInput`) já compara por nome e por CNPJ (ignorando pontuação) — funciona pra qualquer fundo que já tenha `cnpjOuTicker` preenchido.
 
 ## O que falta (em ordem sugerida)
 
 1. **OAuth real para administradores** (seção 3) — ver "Autenticação de administradores" acima.
-2. **Trocar o gráfico de evolução e a rentabilidade por período pro dado real**, assim que `historico_precos` tiver profundidade suficiente (ver seção acima).
-3. Hoje `quantidadeCotas`/`patrimonio` de vários fundos ainda refletem valores antigos/estimados — completar com "Valor investido" em "Editar dados do fundo" conforme o valor real de cada aporte for confirmado.
-4. Ampliar `ADMIN_EMAILS` conforme mais administradores forem definidos.
-5. Confirmar com o BTG se existe convênio de API institucional (opcional — CVM + Banco Central + Yahoo Finance já cobrem o essencial).
+2. Hoje `quantidadeCotas`/`patrimonio` de vários fundos ainda refletem valores antigos/estimados — completar com "Valor investido" em "Editar dados do fundo" conforme o valor real de cada aporte for confirmado.
+3. Ampliar `ADMIN_EMAILS` conforme mais administradores forem definidos.
+4. Confirmar com o BTG se existe convênio de API institucional (opcional — CVM + Banco Central + Yahoo Finance já cobrem o essencial).
 
 ## Dados iniciais e correção histórica
 

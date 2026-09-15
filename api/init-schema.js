@@ -42,5 +42,17 @@ export default async function handler(req, res) {
 
   await sql`CREATE INDEX IF NOT EXISTS historico_precos_fundo_id_idx ON historico_precos (fundo_id)`;
 
+  // Série histórica dos benchmarks (CDI, Ibovespa, S&P 500) — "valor" é
+  // sempre um número-índice comparável (nível acumulado), não uma taxa.
+  // Para o CDI isso é (1 + taxa_diaria) composto a partir de uma base 100.
+  await sql`
+    CREATE TABLE IF NOT EXISTS benchmark_historico (
+      benchmark TEXT NOT NULL,
+      data DATE NOT NULL,
+      valor NUMERIC NOT NULL,
+      PRIMARY KEY (benchmark, data)
+    )
+  `;
+
   res.status(200).json({ ok: true });
 }

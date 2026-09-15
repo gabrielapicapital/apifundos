@@ -120,6 +120,17 @@ export async function buscarHistorico(id) {
   }
 }
 
+// Série histórica de um benchmark (CDI, Ibovespa ou S&P 500), gravada pelo
+// backfill (ver api/backfill-historico.js).
+export async function buscarBenchmark(nome) {
+  try {
+    return await adminFetch(`/api/benchmark?nome=${encodeURIComponent(nome)}`, { method: "GET" });
+  } catch (e) {
+    console.error("Falha ao buscar benchmark:", e);
+    return [];
+  }
+}
+
 export function fundosFiltrados() {
   const { tipo, categoria, busca, ordenacao } = state.filtro;
   const termo = busca.trim().toLowerCase();

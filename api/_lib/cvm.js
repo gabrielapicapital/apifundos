@@ -270,4 +270,20 @@ export async function buscarCotaMaisRecente(cnpj) {
   return null;
 }
 
-export { normalizeCnpj, formatCnpj };
+// Lista de chaves de mês (YYYYMM) entre duas datas, inclusive — usada pelo
+// backfill pra saber quais arquivos mensais da CVM precisa baixar.
+export function mesesEntre(dataInicioISO, dataFimISO) {
+  const inicio = monthKey(new Date(dataInicioISO));
+  const fim = monthKey(new Date(dataFimISO));
+  const meses = [];
+  let atual = inicio;
+  let guard = 0;
+  while (atual <= fim && guard < 240) {
+    meses.push(atual);
+    atual = adjacentMonth(atual, 1);
+    guard++;
+  }
+  return meses;
+}
+
+export { normalizeCnpj, formatCnpj, fetchInformeMes };
