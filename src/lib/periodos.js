@@ -32,9 +32,23 @@ function addDias(dataISO, dias) {
   return d.toISOString().slice(0, 10);
 }
 
-export function calcularPeriodos(fundoPontos, benchPontos, benchmarkNome) {
-  const fundoSerie = paraSerieOrdenada(fundoPontos);
-  const benchSerie = paraSerieOrdenada(benchPontos);
+export function calcularPeriodos(fundoPontosBrutos, benchPontosBrutos, benchmarkNome) {
+  const fundoSerieBruta = paraSerieOrdenada(fundoPontosBrutos);
+  const benchSerieBruta = paraSerieOrdenada(benchPontosBrutos);
+  if (fundoSerieBruta.length < 2 || benchSerieBruta.length < 2) return null;
+
+  // O fundo pode ter um ponto "solto" bem mais antigo que o resto da série —
+  // o preço de entrada gravado na hora que o fundo foi cadastrado, de antes
+  // do backfill retroativo existir (que é limitado a ~13 meses pra trás).
+  // Sem cortar isso, o gráfico liga esse ponto isolado ao próximo dado real
+  // como se fossem vizinhos (ignorando o buraco de meses no meio) e compara
+  // contra um benchmark que só tem histórico a partir de uma data bem mais
+  // recente — resultando numa comparação artificialmente distorcida. Corta
+  // as duas séries pro início em comum (a data mais tardia entre as duas)
+  // antes de calcular qualquer coisa.
+  const inicioComum = fundoSerieBruta[0].data > benchSerieBruta[0].data ? fundoSerieBruta[0].data : benchSerieBruta[0].data;
+  const fundoSerie = fundoSerieBruta.filter((p) => p.data >= inicioComum);
+  const benchSerie = benchSerieBruta.filter((p) => p.data >= inicioComum);
   if (fundoSerie.length < 2 || benchSerie.length < 2) return null;
 
   const hoje = new Date().toISOString().slice(0, 10);
