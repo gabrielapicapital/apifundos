@@ -13,20 +13,44 @@ body{
   font-feature-settings:"tnum";
 }
 
-/* ---- Barra de topo (escura) — código-base de design.apicapital.com.br/componentes/barra-de-topo/ ---- */
-.barra{height:64px;padding:0 var(--api-x6);display:flex;align-items:center;gap:20px;background:var(--api-fundo);color:var(--api-azul);}
-.barra.escura{background:var(--api-fundo-escuro);color:var(--api-sobre-escuro);}
-.barra .selo{height:31px;display:block;flex-shrink:0;}
-.barra .titulo{font-family:var(--api-titulo-pagina-font-family);font-size:var(--api-titulo-pagina-font-size);font-weight:400;line-height:1;white-space:nowrap;}
-.barra .vazio{flex:1;}
-.barra .busca{width:290px;max-width:44vw;height:48px;border-radius:var(--api-canto);background:var(--api-fundo-secao);display:flex;align-items:center;gap:12px;padding:0 var(--api-x4);font-size:15px;color:var(--api-texto-fraco);}
-.barra.escura .busca{background:var(--api-azul-var);color:var(--api-sobre-escuro);opacity:.92;}
-.barra .busca svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;}
-.barra .busca input{border:none;background:transparent;outline:none;font:inherit;color:inherit;width:100%;}
-.barra .busca input::placeholder{color:currentColor;opacity:.85;}
-.barra .cheia{height:36px;border-radius:var(--api-canto);background:var(--api-branco);color:var(--api-azul);display:inline-flex;align-items:center;gap:var(--api-x2);padding:0 20px;font-family:var(--api-corpo-font-family);font-size:15px;font-weight:600;white-space:nowrap;border:none;cursor:pointer;flex-shrink:0;}
-.barra .cheia svg{width:18px;height:18px;flex-shrink:0;}
-.barra .cheia.on{background:var(--api-latao-var);color:var(--api-sobre-escuro);}
+/* ---- Sidebar (barra lateral fixa) — adaptado do componente barra-de-topo de
+   design.apicapital.com.br pra layout vertical (ver adendo layout-sidebar-visual) ---- */
+.app-shell{display:flex;align-items:stretch;min-height:100vh;}
+.sidebar{width:296px;flex-shrink:0;background:var(--api-fundo-escuro);color:var(--api-sobre-escuro);padding:var(--api-x4) var(--api-x6) var(--api-x6);display:flex;flex-direction:column;gap:var(--api-x6);position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;}
+.sidebar-top{display:flex;flex-direction:column;gap:var(--api-x4);flex-shrink:0;}
+.sidebar .brand{display:flex;align-items:center;gap:12px;}
+.sidebar .selo{height:31px;display:block;flex-shrink:0;}
+.sidebar .brand-text{display:flex;flex-direction:column;min-width:0;}
+.sidebar .titulo{font-family:var(--api-titulo-pagina-font-family);font-size:19px;font-weight:400;line-height:1.25;}
+.sidebar .subtitulo{font-family:var(--api-corpo-pequeno-font-family);font-size:11.5px;color:var(--api-sobre-escuro);opacity:.68;margin-top:2px;}
+.sidebar .busca{width:100%;box-sizing:border-box;height:48px;border-radius:var(--api-canto);background:var(--api-azul-var);opacity:.92;display:flex;align-items:center;gap:12px;padding:0 var(--api-x4);font-size:15px;color:var(--api-sobre-escuro);}
+.sidebar .busca svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;}
+.sidebar .busca input{border:none;background:transparent;outline:none;font:inherit;color:inherit;width:100%;}
+.sidebar .busca input::placeholder{color:currentColor;opacity:.85;}
+
+.sidebar-center{flex:1;display:flex;flex-direction:column;justify-content:center;gap:var(--api-x4);min-height:0;}
+.sidebar-section{display:flex;flex-direction:column;gap:8px;}
+.sidebar-label{font-family:var(--api-rotulo-font-family);font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--api-sobre-escuro);opacity:.6;font-weight:600;}
+.sidebar hr{border:none;border-top:1px solid rgba(255,255,255,.18);margin:0;}
+
+/* Nos "chips" verticais da sidebar, o item selecionado tem que ficar com
+   fundo branco + texto navy (nunca navy sobre o fundo navy da sidebar). */
+.sidebar .chips{flex-direction:column;gap:7px;}
+.sidebar .chip, .sidebar .type-tab{width:100%;box-sizing:border-box;height:auto;text-align:left;padding:9px 12px;background:transparent;border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.85);}
+.sidebar .chip.active, .sidebar .type-tab.active{background:var(--api-sobre-escuro);color:var(--api-azul);border-color:var(--api-sobre-escuro);}
+.sidebar .sort-wrap select{width:100%;box-sizing:border-box;background:var(--api-azul-var);color:var(--api-sobre-escuro);border:1px solid rgba(255,255,255,.3);}
+
+.main-area{flex:1;min-width:0;}
+.main-topbar{display:flex;justify-content:flex-end;padding:var(--api-x4) var(--api-x6) 0;}
+.cheia{height:36px;border-radius:var(--api-canto);display:inline-flex;align-items:center;gap:var(--api-x2);padding:0 20px;font-family:var(--api-corpo-font-family);font-size:15px;font-weight:600;white-space:nowrap;border:none;cursor:pointer;flex-shrink:0;}
+.cheia svg{width:18px;height:18px;flex-shrink:0;}
+.main-topbar .cheia{background:var(--api-azul);color:var(--api-sobre-escuro);}
+.cheia.on{background:var(--api-latao-var);color:var(--api-sobre-escuro);}
+
+@media (max-width:900px){
+  .app-shell{flex-direction:column;}
+  .sidebar{width:100%;height:auto;position:relative;top:auto;}
+}
 
 /* ---- Dica de instalação (iOS) ---- */
 .install-hint{max-width:1180px;margin:var(--api-x4) auto 0;padding:12px var(--api-x4);background:var(--api-fundo);border-radius:var(--api-canto);color:var(--api-texto);font-size:var(--api-corpo-pequeno-font-size);display:none;align-items:center;gap:10px;}
@@ -34,8 +58,7 @@ body{
 .install-hint svg{width:20px;height:20px;flex-shrink:0;color:var(--api-azul);}
 .install-hint button{border:none;background:none;color:var(--api-acao);font-weight:600;cursor:pointer;font-size:inherit;padding:0;}
 
-/* ---- Controles: abas de tipo + chips de categoria + ordenação ---- */
-.controls{max-width:1180px;margin:0 auto;padding:var(--api-x4) var(--api-x6) 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;}
+/* ---- Abas de tipo + chips de categoria (agora empilhados na sidebar) ---- */
 .chips{display:flex;gap:var(--api-x2);flex-wrap:wrap;}
 
 /* Chip e aba de tipo consomem os botões de utilidade oficiais (outline
@@ -281,9 +304,8 @@ tbody tr:hover .expand-chevron svg{color:var(--api-azul);}
 .whatsapp-btn svg{width:20px;height:20px;fill:var(--api-azul);flex-shrink:0;}
 
 @media (max-width:720px){
-  .barra .titulo{display:none;}
-  .barra .busca{width:auto;flex:1;}
-  .controls, .content, .footer-note{padding-left:var(--api-x4);padding-right:var(--api-x4);}
+  .sidebar{padding:var(--api-x4);}
+  .content, .footer-note{padding-left:var(--api-x4);padding-right:var(--api-x4);}
   table, thead, tbody, th, td, tr{display:block;}
   thead{display:none;}
   tbody tr{padding:12px var(--api-x4);border-radius:var(--api-canto);margin-bottom:8px;}

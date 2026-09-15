@@ -22,75 +22,95 @@
 </head>
 <body>
 
-  <header class="barra escura">
-    <img class="selo" src="./public/logo-pelicano-branco.svg" alt="API Capital">
-    <span class="titulo">Fundos Indicados</span>
-    <span class="vazio"></span>
-    <span class="busca">
-      <svg viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg>
-      <input id="searchInput" type="text" placeholder="Buscar por nome ou CNPJ...">
-    </span>
-    <button id="adminBtn" class="cheia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Administrar</span></button>
-  </header>
-
-  <div class="install-hint" id="iosInstallHint">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><path d="M12 18h.01"></path></svg>
-    <span>No iPhone: toque em <strong>Compartilhar</strong> e depois em <strong>"Adicionar à Tela de Início"</strong> para instalar este app.</span>
-    <button id="dismissInstallHint">Entendi</button>
-  </div>
-
-  <div class="controls" style="padding-top:18px;padding-bottom:0;">
-    <div class="chips" id="typeTabs"></div>
-  </div>
-
-  <div class="controls">
-    <div class="chips" id="chipRow"></div>
-    <div class="sort-wrap">
-      <select id="sortSelect">
-        <option value="ret-desc">Rentabilidade: maior primeiro</option>
-        <option value="ret-asc">Rentabilidade: menor primeiro</option>
-        <option value="name-asc">Nome (A a Z)</option>
-        <option value="cat-asc">Categoria</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="content">
-    <div class="edit-banner" id="editBanner" style="display:none;">
-      <span>Modo administrador ativo: você pode adicionar ou remover fundos e editar diagnósticos.</span>
-      <div style="display:flex;gap:8px;">
-        <button class="api-botao-utilidade-cheio icon-btn" id="openAddFund"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg><span>Adicionar fundo</span></button>
-        <button class="api-botao-utilidade" id="exitEditBtn">Sair do modo administrador</button>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="brand">
+          <img class="selo" src="./public/logo-pelicano-branco.svg" alt="API Capital">
+          <div class="brand-text">
+            <span class="titulo">API Capital Investimentos</span>
+            <span class="subtitulo">Fundos indicados · acompanhamento para consultores</span>
+          </div>
+        </div>
+        <span class="busca">
+          <svg viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg>
+          <input id="searchInput" type="text" placeholder="Buscar por nome ou CNPJ...">
+        </span>
       </div>
-    </div>
-    <div class="banner" id="banner"></div>
 
-    <div class="summary-cards" id="summaryCards"></div>
+      <div class="sidebar-center">
+        <div class="sidebar-section">
+          <div class="sidebar-label">Ordenar por</div>
+          <div class="sort-wrap">
+            <select id="sortSelect">
+              <option value="ret-desc">Rentabilidade: maior primeiro</option>
+              <option value="ret-asc">Rentabilidade: menor primeiro</option>
+              <option value="name-asc">Nome (A a Z)</option>
+              <option value="cat-asc">Categoria</option>
+            </select>
+          </div>
+        </div>
+        <hr>
+        <div class="sidebar-section">
+          <div class="sidebar-label">Tipo</div>
+          <div class="chips" id="typeTabs"></div>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">Categoria</div>
+          <div class="chips" id="chipRow"></div>
+        </div>
+      </div>
+    </aside>
 
-    <div class="comparator" id="comparator"></div>
+    <main class="main-area">
+      <div class="main-topbar">
+        <button id="adminBtn" class="cheia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span>Administrar</span></button>
+      </div>
 
-    <div class="count" id="countLabel"></div>
-    <table>
-      <thead>
-        <tr>
-          <th id="fundColHeader">Fundo</th>
-          <th>Categoria</th>
-          <th>Adicionado em</th>
-          <th class="num">Preço de entrada</th>
-          <th class="num">Preço atual</th>
-          <th class="num">Rentabilidade desde a entrada</th>
-          <th class="num" id="actionsHeader" style="display:none;">Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody"></tbody>
-    </table>
+      <div class="install-hint" id="iosInstallHint">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><path d="M12 18h.01"></path></svg>
+        <span>No iPhone: toque em <strong>Compartilhar</strong> e depois em <strong>"Adicionar à Tela de Início"</strong> para instalar este app.</span>
+        <button id="dismissInstallHint">Entendi</button>
+      </div>
 
-    <div class="footer-note">
-      Dados iniciais extraídos do relatório da carteira em 31/08/2026. "Preço de entrada" é travado na data em que o
-      fundo é adicionado à lista, e "preço atual" é atualizado por uma fonte automática (CVM para fundos regulados,
-      B3 ou provedor de mercado para ETFs), nunca a partir de um aporte fixo por fundo. Fundos marcados como
-      "pendente de correção" foram herdados da carteira antiga e aguardam recotação (ver seção 7 da especificação).
-    </div>
+      <div class="content">
+        <div class="edit-banner" id="editBanner" style="display:none;">
+          <span>Modo administrador ativo: você pode adicionar ou remover fundos e editar diagnósticos.</span>
+          <div style="display:flex;gap:8px;">
+            <button class="api-botao-utilidade-cheio icon-btn" id="openAddFund"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg><span>Adicionar fundo</span></button>
+            <button class="api-botao-utilidade" id="exitEditBtn">Sair do modo administrador</button>
+          </div>
+        </div>
+        <div class="banner" id="banner"></div>
+
+        <div class="summary-cards" id="summaryCards"></div>
+
+        <div class="comparator" id="comparator"></div>
+
+        <div class="count" id="countLabel"></div>
+        <table>
+          <thead>
+            <tr>
+              <th id="fundColHeader">Fundo</th>
+              <th>Categoria</th>
+              <th>Adicionado em</th>
+              <th class="num">Preço de entrada</th>
+              <th class="num">Preço atual</th>
+              <th class="num">Rentabilidade desde a entrada</th>
+              <th class="num" id="actionsHeader" style="display:none;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+
+        <div class="footer-note">
+          Dados iniciais extraídos do relatório da carteira em 31/08/2026. "Preço de entrada" é travado na data em que o
+          fundo é adicionado à lista, e "preço atual" é atualizado por uma fonte automática (CVM para fundos regulados,
+          B3 ou provedor de mercado para ETFs), nunca a partir de um aporte fixo por fundo. Fundos marcados como
+          "pendente de correção" foram herdados da carteira antiga e aguardam recotação (ver seção 7 da especificação).
+        </div>
+      </div>
+    </main>
   </div>
 
   <div class="contact-band">
