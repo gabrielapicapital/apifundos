@@ -174,10 +174,10 @@ body{
 
 /* ---- Comparador de desempenho ---- */
 .comparator{display:grid;grid-template-columns:1fr 1fr;gap:var(--api-x4);margin-bottom:var(--api-x6);}
-.comparator-panel{background:var(--api-fundo);border-radius:var(--api-canto);padding:var(--api-x6);}
+.comparator-panel{min-width:0;background:var(--api-fundo);border-radius:var(--api-canto);padding:var(--api-x6);}
 .comparator-panel h4{margin:0 0 var(--api-x4);font-size:var(--api-corpo-pequeno-font-size);color:var(--api-texto-fraco);font-weight:500;}
 .comp-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:var(--api-corpo-pequeno-font-size);}
-.comp-name{flex:0 0 42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--api-texto);}
+.comp-name{flex:0 1 42%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--api-texto);}
 .comp-bar-track{flex:1;background:var(--api-fundo-bloco);border-radius:4px;height:8px;overflow:hidden;}
 .comp-bar-fill{height:100%;}
 .comp-bar-fill.pos{background:var(--api-ok);}
