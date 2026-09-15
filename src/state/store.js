@@ -1,19 +1,16 @@
-import { STORAGE_KEY } from "../config.js";
-import { loadSeedFundos, calcularRentabilidade } from "../data/normalize.js";
+import { calcularRentabilidade } from "../data/normalize.js";
 
-// Store simples (estado + pub/sub) com persistência em localStorage.
-//
-// TODO(backend): isto é um substituto temporário para a API + Postgres
-// descritos na especificação (seção 9). Quando o backend existir, trocar
-// `persist()`/`hydrate()` por chamadas HTTP e manter a mesma interface
-// pública (getState/subscribe/actions) para não precisar reescrever a UI.
-// Enquanto isso, dados adicionados/removidos/editados por um admin só ficam
-// salvos no navegador daquele admin — não sincronizam entre consultores.
+// Store simples (estado + pub/sub), agora falando com o backend real
+// (funções da Vercel + Postgres, ver pasta api/) em vez de localStorage.
+// Dados de fundo passam a ser compartilhados entre todos os consultores.
 
 let state = {
   fundos: [],
   loaded: false,
-  adminEmail: null, // e-mail "autenticado" (ver TODO em config.js)
+  loadError: null,
+  adminEmail: null, // e-mail "autenticado" (ver TODO em config.js) — enviado
+  // como header x-admin-email nas chamadas que exigem admin; o servidor
+  // confere contra ADMIN_EMAILS (ver api/_lib/auth.js).
   filtro: {
     tipo: "Todos",
     categoria: "Todos",
@@ -39,35 +36,31 @@ export function getState() {
   return state;
 }
 
-function persist() {
-  try {
-    const payload = {
-      fundos: state.fundos,
-      savedAt: new Date().toISOString(),
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } catch (e) {
-    console.error("Falha ao salvar fundos localmente:", e);
+function recompute(fundos) {
+  return fundos.map((f) => ({ ...f, rentabilidadePct: calcularRentabilidade(f) }));
+}
+
+async function adminFetch(url, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (state.adminEmail) headers["x-admin-email"] = state.adminEmail;
+  if (options.body) headers["Content-Type"] = "application/json";
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Erro ${res.status}`);
   }
+  return res.status === 204 ? null : res.json();
 }
 
 export async function hydrate() {
-  let fundos;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    fundos = raw ? JSON.parse(raw).fundos : null;
+    const fundos = await adminFetch("/api/fundos");
+    state = { ...state, fundos: recompute(fundos), loaded: true, loadError: null };
   } catch (e) {
-    fundos = null;
+    console.error("Falha ao carregar fundos do servidor:", e);
+    state = { ...state, fundos: [], loaded: true, loadError: e.message };
   }
-  if (!fundos || !fundos.length) {
-    fundos = await loadSeedFundos();
-  }
-  state = { ...state, fundos: recompute(fundos), loaded: true };
   notify();
-}
-
-function recompute(fundos) {
-  return fundos.map((f) => ({ ...f, rentabilidadePct: calcularRentabilidade(f) }));
 }
 
 export function setFiltro(patch) {
@@ -89,57 +82,42 @@ export function setAdminEmail(email) {
   state = { ...state, adminEmail: email };
 }
 
-export function addFundo(fundo) {
-  const novo = {
-    id: `${fundo.nome.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
-    diagnostico: null,
-    historicoPrecos: [{ data: fundo.dataAdicao, preco: fundo.precoEntrada }],
-    ...fundo,
-  };
+export async function addFundo(fundo) {
+  const novo = await adminFetch("/api/fundos", { method: "POST", body: JSON.stringify(fundo) });
   state = { ...state, fundos: recompute([...state.fundos, novo]) };
-  persist();
   notify();
 }
 
-export function removeFundo(id) {
+export async function removeFundo(id) {
+  await adminFetch(`/api/fundos/${id}`, { method: "DELETE" });
   state = {
     ...state,
     fundos: state.fundos.filter((f) => f.id !== id),
     expandedId: state.expandedId === id ? null : state.expandedId,
   };
-  persist();
   notify();
 }
 
-export function updateFundo(id, patch) {
-  state = {
-    ...state,
-    fundos: recompute(
-      state.fundos.map((f) => {
-        if (f.id !== id) return f;
-        const merged = { ...f, ...patch };
-        // Se a correção acabou de fornecer preço de entrada + data e ainda não
-        // havia nenhum ponto de histórico, este é o primeiro (ver seção 8).
-        if (patch.precoEntrada != null && merged.dataAdicao && !(f.historicoPrecos && f.historicoPrecos.length)) {
-          merged.historicoPrecos = [{ data: merged.dataAdicao, preco: patch.precoEntrada }];
-        }
-        // patrimonio = quantidade_cotas × preco_atual (especificação seção 4).
-        merged.patrimonio = merged.quantidadeCotas * merged.precoAtual;
-        return merged;
-      })
-    ),
-  };
-  persist();
+export async function updateFundo(id, patch) {
+  const atualizado = await adminFetch(`/api/fundos/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+  state = { ...state, fundos: recompute(state.fundos.map((f) => (f.id === id ? atualizado : f))) };
   notify();
 }
 
-export function updateDiagnostico(id, texto) {
-  state = {
-    ...state,
-    fundos: state.fundos.map((f) => (f.id === id ? { ...f, diagnostico: texto } : f)),
-  };
-  persist();
-  notify();
+export async function updateDiagnostico(id, texto) {
+  await updateFundo(id, { diagnostico: texto });
+}
+
+// Histórico real de preços de um fundo (para o gráfico de evolução). Vazio
+// quando ainda não há pontos suficientes — nesse caso o gráfico continua
+// mostrando o exemplo ilustrativo (ver benchmarkChart.js).
+export async function buscarHistorico(id) {
+  try {
+    return await adminFetch(`/api/fundos/${id}`, { method: "GET" });
+  } catch (e) {
+    console.error("Falha ao buscar histórico:", e);
+    return [];
+  }
 }
 
 export function fundosFiltrados() {

@@ -3,12 +3,16 @@
 // pelo provedor OAuth, ver README > "Autenticação de administradores").
 
 // TODO(admin): a especificação (seção 3) pede login restrito por e-mail
-// (ex: Google OAuth) para os 2 administradores. Isso exige um backend (para
-// validar o token do provedor OAuth) que ainda não existe nesta fase
-// "frontend primeiro". Por enquanto, o app pede o e-mail e confere contra esta
-// lista *apenas no navegador* — ou seja, NÃO é autenticação de verdade
-// (qualquer pessoa pode digitar um e-mail da lista). Ver README para o plano
-// de migração para OAuth real.
+// (ex: Google OAuth) para os 2 administradores. Isso ainda não existe: o que
+// há hoje são DUAS conferências por e-mail, nenhuma delas é OAuth de
+// verdade —
+//   1. Esta lista, conferida só no navegador (rápida, mas qualquer pessoa
+//      pode digitar um e-mail da lista e "passar" por ela).
+//   2. api/_lib/auth.js, que confere de novo no servidor contra a variável
+//      de ambiente ADMIN_EMAILS antes de qualquer escrita no banco — essa
+//      é a que realmente protege os dados, mas ainda não confirma QUEM
+//      está digitando o e-mail.
+// Ver README para o plano de migração para OAuth real.
 export const ADMIN_EMAILS_PLACEHOLDER = [
   // "consultor.admin1@apicapital.com.br",
   // "consultor.admin2@apicapital.com.br",
@@ -41,5 +45,3 @@ export function assetWord(tipo, plural) {
   if (tipo === "FIDC") return plural ? "FIDCs" : "FIDC";
   return plural ? "fundos" : "fundo";
 }
-
-export const STORAGE_KEY = "api-capital-fundos-v1";

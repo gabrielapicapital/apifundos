@@ -1,0 +1,10 @@
+{
+  "crons": [
+    { "path": "/api/cron/atualizar-precos", "schedule": "0 21 * * 1-5" }
+  ],
+  "functions": {
+    "api/cron/atualizar-precos.js": { "maxDuration": 60 },
+    "api/cvm-lookup.js": { "maxDuration": 30 },
+    "api/migrar-seed.js": { "maxDuration": 60 }
+  }
+}

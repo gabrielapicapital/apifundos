@@ -11,6 +11,17 @@ import * as misc from "./components/misc.js";
 function renderAll(state) {
   if (!state.loaded) return;
 
+  if (state.loadError) {
+    document.getElementById("banner").style.display = "flex";
+    document.getElementById("banner").innerHTML =
+      `<span><strong>Não foi possível carregar os fundos do servidor.</strong> ${state.loadError} — recarregue a página em alguns instantes. Se persistir, avise um administrador.</span>`;
+    document.getElementById("summaryCards").innerHTML = "";
+    document.getElementById("comparator").innerHTML = "";
+    document.getElementById("tableBody").innerHTML = "";
+    document.getElementById("countLabel").textContent = "";
+    return;
+  }
+
   tabsChips.render(state);
   adminAuth.render(state);
 

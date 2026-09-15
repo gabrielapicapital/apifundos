@@ -108,21 +108,29 @@ export function render(lista, state) {
   });
 
   tbody.querySelectorAll("[data-remove]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
+    btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const id = btn.dataset.remove;
       const fundo = lista.find((f) => f.id === id);
       if (fundo && confirm(`Remover "${fundo.nome}" da lista de fundos indicados?`)) {
-        removeFundo(id);
+        try {
+          await removeFundo(id);
+        } catch (err) {
+          alert(`Não foi possível remover: ${err.message}`);
+        }
       }
     });
   });
 
   tbody.querySelectorAll("[data-diag-save]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const id = btn.dataset.diagSave;
       const textarea = document.getElementById(`diag-${id}`);
-      updateDiagnostico(id, textarea.value.trim());
+      try {
+        await updateDiagnostico(id, textarea.value.trim());
+      } catch (err) {
+        alert(`Não foi possível salvar o diagnóstico: ${err.message}`);
+      }
     });
   });
 

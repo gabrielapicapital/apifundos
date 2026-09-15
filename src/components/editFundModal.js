@@ -16,7 +16,7 @@ export function init() {
   // manualmente e o fundo continuava aparecendo como pendente.
   document.getElementById("editFundEntry").addEventListener("input", syncPendenteFromEntry);
 
-  document.getElementById("confirmEditFundBtn").addEventListener("click", () => {
+  document.getElementById("confirmEditFundBtn").addEventListener("click", async () => {
     const id = modal().dataset.fundoId;
     const nome = document.getElementById("editFundName").value.trim();
     const instituicao = document.getElementById("editFundInst").value.trim();
@@ -49,8 +49,17 @@ export function init() {
       patch.quantidadeCotas = valorInvestido / precoEntrada;
     }
 
-    updateFundo(id, patch);
-    modal().classList.add("hidden");
+    const confirmBtn = document.getElementById("confirmEditFundBtn");
+    confirmBtn.disabled = true;
+    try {
+      await updateFundo(id, patch);
+      modal().classList.add("hidden");
+    } catch (err) {
+      errBox.textContent = `Não foi possível salvar: ${err.message}`;
+      errBox.style.display = "block";
+    } finally {
+      confirmBtn.disabled = false;
+    }
   });
 }
 
