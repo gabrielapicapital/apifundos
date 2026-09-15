@@ -19,7 +19,11 @@ export function init() {
   // Busca real na CVM (cadastro + cota na data da compra). Só cobre
   // fundos/FIDCs com CNPJ — ETFs usam ticker e não têm cadastro na CVM (ver
   // especificação seção 6), então o campo de busca não faz nada por eles.
-  document.getElementById("lookupCnpjBtn").addEventListener("click", async () => {
+  // Um mesmo fundo pode ter a cota buscada de novo (troca de data depois de
+  // já ter buscado, por exemplo) — por isso fica numa função à parte, chamada
+  // tanto pelo clique em "Buscar" quanto automaticamente quando a data muda.
+  let buscaEmAndamento = false;
+  async function buscarCota() {
     const statusEl = document.getElementById("cnpjStatus");
     const cnpjRaw = document.getElementById("newFundCnpj").value.replace(/\D/g, "");
     const dataVal = document.getElementById("newFundDate").value;
@@ -36,6 +40,7 @@ export function init() {
       return;
     }
 
+    buscaEmAndamento = true;
     statusEl.style.color = "var(--api-texto-fraco)";
     statusEl.textContent = "Buscando na CVM...";
     try {
@@ -55,12 +60,28 @@ export function init() {
           ? `Fundo encontrado. Cota de ${dados.dataCota} preenchida (data exata não tinha pregão).`
           : `Fundo encontrado. Cota de ${dados.dataCota} preenchida.`;
       } else {
+        document.getElementById("newFundQuota").value = "";
         statusEl.style.color = "var(--api-erro)";
         statusEl.textContent = "Fundo encontrado, mas não achei cota perto dessa data. Confirme manualmente.";
       }
     } catch (err) {
+      document.getElementById("newFundQuota").value = "";
       statusEl.style.color = "var(--api-erro)";
       statusEl.textContent = `Não encontrei: ${err.message}`;
+    } finally {
+      buscaEmAndamento = false;
+    }
+  }
+
+  document.getElementById("lookupCnpjBtn").addEventListener("click", buscarCota);
+
+  // Se o CNPJ já tinha sido buscado com sucesso e a data da compra muda,
+  // busca de novo sozinho — senão a cota preenchida fica "grudada" na
+  // primeira data pesquisada, mesmo depois de trocar a data no campo.
+  document.getElementById("newFundDate").addEventListener("change", () => {
+    const cnpjRaw = document.getElementById("newFundCnpj").value.replace(/\D/g, "");
+    if (cnpjRaw.length === 14 && document.getElementById("newFundQuota").value && !buscaEmAndamento) {
+      buscarCota();
     }
   });
 
