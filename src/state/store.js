@@ -86,6 +86,22 @@ export async function addFundo(fundo) {
   const novo = await adminFetch("/api/fundos", { method: "POST", body: JSON.stringify(fundo) });
   state = { ...state, fundos: recompute([...state.fundos, novo]) };
   notify();
+  return novo;
+}
+
+// Dispara o backfill retroativo de UM fundo (api/fundos/[id]/backfill.js):
+// busca de uma vez a cota real desde a data de compra até hoje, em vez de
+// esperar a rotina diária acumular um ponto por dia. Chamado logo depois de
+// addFundo() no modal "Adicionar fundo" — silencioso, não bloqueia a UI; se
+// falhar (ex: fundo sem CNPJ), o fundo continua cadastrado normalmente, só
+// sem o histórico completo ainda.
+export async function backfillFundo(id) {
+  try {
+    await adminFetch(`/api/fundos/${id}/backfill`, { method: "POST" });
+    await hydrate();
+  } catch (e) {
+    console.error("Falha ao buscar histórico completo do fundo novo:", e);
+  }
 }
 
 export async function removeFundo(id) {

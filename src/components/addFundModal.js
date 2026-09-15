@@ -1,4 +1,4 @@
-import { addFundo } from "../state/store.js";
+import { addFundo, backfillFundo } from "../state/store.js";
 
 export function init() {
   const modal = document.getElementById("addFundModal");
@@ -83,12 +83,13 @@ export function init() {
     const confirmBtn = document.getElementById("confirmAddFundBtn");
     confirmBtn.disabled = true;
     try {
-      await addFundo({
+      const cnpjOuTicker = document.getElementById("newFundCnpj").value.trim() || null;
+      const novo = await addFundo({
         nome,
         instituicao,
         tipo,
         categoria,
-        cnpjOuTicker: document.getElementById("newFundCnpj").value.trim() || null,
+        cnpjOuTicker,
         dataAdicao: dataVal,
         precoEntrada: cota,
         precoAtual: cota,
@@ -96,6 +97,11 @@ export function init() {
         pendenteCorrecao: false,
       });
       modal.classList.add("hidden");
+
+      // Com CNPJ/ticker + data, já dá pra buscar de uma vez o histórico real
+      // desde a compra até hoje (em vez de esperar a rotina diária acumular
+      // um ponto por dia) — dispara em segundo plano, não trava a UI.
+      if (cnpjOuTicker) backfillFundo(novo.id);
     } catch (err) {
       errBox.textContent = `Não foi possível adicionar: ${err.message}`;
       errBox.style.display = "block";

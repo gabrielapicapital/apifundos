@@ -6,6 +6,7 @@
     "api/cron/atualizar-precos.js": { "maxDuration": 60 },
     "api/cvm-lookup.js": { "maxDuration": 60 },
     "api/migrar-seed.js": { "maxDuration": 60 },
-    "api/backfill-historico.js": { "maxDuration": 300 }
+    "api/backfill-historico.js": { "maxDuration": 300 },
+    "api/fundos/[id]/backfill.js": { "maxDuration": 90 }
   }
 }
