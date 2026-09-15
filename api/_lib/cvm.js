@@ -270,6 +270,54 @@ export async function buscarCotaMaisRecente(cnpj) {
   return null;
 }
 
+// Quando não acha cota perto da data pedida, tenta achar a PRIMEIRA cota
+// disponível a partir dali — serve pra descobrir se o motivo é a data ser
+// anterior ao início do fundo (caso comum: admin digita a data de compra
+// errada, ou o fundo só foi listado bem depois da data digitada).
+//
+// Um fundo, uma vez que começa a publicar cota, publica todo mês daí pra
+// frente sem parar — então "esse mês tem dado" é monotônico (falso, falso,
+// ..., falso, verdadeiro, verdadeiro, ...) no intervalo até hoje. Isso deixa
+// achar o primeiro mês com dado uma busca BINÁRIA (log N meses baixados) em
+// vez de varrer mês a mês — importante pra não estourar o timeout quando a
+// data digitada é anos antes do fundo existir (ex: erro de ano na digitação).
+export async function buscarPrimeiraCotaAposData(cnpj, dataInicialISO) {
+  const cnpjDigits = normalizeCnpj(cnpj);
+  const hoje = new Date().toISOString().slice(0, 10);
+  const meses = mesesEntre(dataInicialISO, hoje);
+  if (!meses.length) return null;
+
+  const temDadoCache = new Map();
+  async function temDadoNoMes(idx) {
+    if (temDadoCache.has(idx)) return temDadoCache.get(idx);
+    const mapa = await fetchInformeMes(meses[idx]);
+    const tem = (mapa.get(cnpjDigits) || []).length > 0;
+    temDadoCache.set(idx, tem);
+    return tem;
+  }
+
+  // Nem o mês de hoje tem cota desse CNPJ: não tem dado nenhum no intervalo
+  // pedido (fundo baixado, CNPJ errado etc.) — não é "data cedo demais".
+  if (!(await temDadoNoMes(meses.length - 1))) return null;
+
+  let lo = 0;
+  let hi = meses.length - 1;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (await temDadoNoMes(mid)) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
+    }
+  }
+
+  const mapa = await fetchInformeMes(meses[lo]);
+  const rows = (mapa.get(cnpjDigits) || []).filter((r) => r.data >= dataInicialISO);
+  if (!rows.length) return null;
+  const primeira = rows.reduce((a, b) => (a.data < b.data ? a : b));
+  return { data: primeira.data, cota: primeira.vlQuota };
+}
+
 // Lista de chaves de mês (YYYYMM) entre duas datas, inclusive — usada pelo
 // backfill pra saber quais arquivos mensais da CVM precisa baixar.
 export function mesesEntre(dataInicioISO, dataFimISO) {

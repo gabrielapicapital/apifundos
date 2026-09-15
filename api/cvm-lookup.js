@@ -1,4 +1,4 @@
-import { fetchCadastro, classeCvmParaCategoria, buscarCotaPorCnpjData, normalizeCnpj } from "./_lib/cvm.js";
+import { fetchCadastro, classeCvmParaCategoria, buscarCotaPorCnpjData, buscarPrimeiraCotaAposData, normalizeCnpj } from "./_lib/cvm.js";
 
 // GET /api/cvm-lookup?cnpj=12345678000190&data=2026-09-10
 // Usado pelo modal "Adicionar fundo": busca nome/instituição/categoria no
@@ -35,6 +35,15 @@ export default async function handler(req, res) {
       return;
     }
 
+    // Não achou cota perto da data pedida: pode ser só um buraco (feriado
+    // prolongado) ou a data ser anterior ao início do fundo. Procura a
+    // primeira cota disponível a partir dali pra diferenciar os dois casos e
+    // já sugerir a data certa em vez de só dizer "não achei".
+    let primeiraDisponivel = null;
+    if (!cotaInfo) {
+      primeiraDisponivel = await buscarPrimeiraCotaAposData(cnpjDigits, data);
+    }
+
     res.status(200).json({
       nome: registro.nome,
       instituicao: registro.instituicao,
@@ -42,6 +51,7 @@ export default async function handler(req, res) {
       cota: cotaInfo ? cotaInfo.cota : null,
       dataCota: cotaInfo ? cotaInfo.data : null,
       aproximado: cotaInfo ? cotaInfo.aproximado : null,
+      primeiraDisponivel,
     });
   } catch (err) {
     res.status(502).json({ error: `Falha ao consultar a CVM: ${err.message}` });

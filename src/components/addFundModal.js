@@ -1,4 +1,5 @@
 import { addFundo, backfillFundo } from "../state/store.js";
+import { fmtDateBR, fmtNumber } from "../lib/format.js";
 
 export function init() {
   const modal = document.getElementById("addFundModal");
@@ -11,6 +12,7 @@ export function init() {
     document.getElementById("newFundDate").value = new Date().toISOString().slice(0, 10);
     document.getElementById("addFundError").style.display = "none";
     document.getElementById("cnpjStatus").style.display = "none";
+    buscaJaIniciada = false;
     modal.classList.remove("hidden");
   });
 
@@ -23,6 +25,7 @@ export function init() {
   // já ter buscado, por exemplo) — por isso fica numa função à parte, chamada
   // tanto pelo clique em "Buscar" quanto automaticamente quando a data muda.
   let buscaEmAndamento = false;
+  let buscaJaIniciada = false;
   async function buscarCota() {
     const statusEl = document.getElementById("cnpjStatus");
     const cnpjRaw = document.getElementById("newFundCnpj").value.replace(/\D/g, "");
@@ -41,6 +44,7 @@ export function init() {
     }
 
     buscaEmAndamento = true;
+    buscaJaIniciada = true;
     statusEl.style.color = "var(--api-texto-fraco)";
     statusEl.textContent = "Buscando na CVM...";
     try {
@@ -62,7 +66,23 @@ export function init() {
       } else {
         document.getElementById("newFundQuota").value = "";
         statusEl.style.color = "var(--api-erro)";
-        statusEl.textContent = "Fundo encontrado, mas não achei cota perto dessa data. Confirme manualmente.";
+        if (dados.primeiraDisponivel) {
+          // A data escolhida é anterior à primeira cota que a CVM tem
+          // registrada pra esse fundo — provavelmente o fundo ainda nem
+          // existia, ou a data foi digitada errada. Em vez de só reclamar,
+          // já mostra a primeira data real com cota disponível.
+          const dataFmt = fmtDateBR(dados.primeiraDisponivel.data);
+          const cotaFmt = fmtNumber(dados.primeiraDisponivel.cota, 6);
+          statusEl.innerHTML = `Esse fundo só tem cota registrada na CVM a partir de ${dataFmt} (R$ ${cotaFmt}). A data escolhida é anterior ao início do fundo.<br><button type="button" id="usarPrimeiraDataBtn" class="api-botao-utilidade" style="margin-top:6px;">Usar ${dataFmt}</button>`;
+          document.getElementById("usarPrimeiraDataBtn").addEventListener("click", () => {
+            document.getElementById("newFundDate").value = dados.primeiraDisponivel.data;
+            document.getElementById("newFundQuota").value = dados.primeiraDisponivel.cota;
+            statusEl.style.color = "var(--api-ok)";
+            statusEl.textContent = `Fundo encontrado. Cota de ${dados.primeiraDisponivel.data} preenchida.`;
+          });
+        } else {
+          statusEl.textContent = "Fundo encontrado, mas não achei cota perto dessa data. Confirme manualmente.";
+        }
       }
     } catch (err) {
       document.getElementById("newFundQuota").value = "";
@@ -75,12 +95,12 @@ export function init() {
 
   document.getElementById("lookupCnpjBtn").addEventListener("click", buscarCota);
 
-  // Se o CNPJ já tinha sido buscado com sucesso e a data da compra muda,
-  // busca de novo sozinho — senão a cota preenchida fica "grudada" na
+  // Se já tinha sido feita uma busca (com sucesso ou não) e a data da compra
+  // muda, busca de novo sozinho — senão a cota preenchida fica "grudada" na
   // primeira data pesquisada, mesmo depois de trocar a data no campo.
   document.getElementById("newFundDate").addEventListener("change", () => {
     const cnpjRaw = document.getElementById("newFundCnpj").value.replace(/\D/g, "");
-    if (cnpjRaw.length === 14 && document.getElementById("newFundQuota").value && !buscaEmAndamento) {
+    if (cnpjRaw.length === 14 && buscaJaIniciada && !buscaEmAndamento) {
       buscarCota();
     }
   });
