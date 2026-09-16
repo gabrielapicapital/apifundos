@@ -147,6 +147,17 @@ export async function buscarCadastro(id) {
   }
 }
 
+// Composição da carteira (dataset CDA da CVM) — null se ainda não foi
+// sincronizada pra esse fundo (ver api/sincronizar-composicao.js).
+export async function buscarComposicao(id) {
+  try {
+    return await adminFetch(`/api/fundos/${id}/composicao`, { method: "GET" });
+  } catch (e) {
+    console.error("Falha ao buscar composição da carteira:", e);
+    return null;
+  }
+}
+
 export function fundosFiltrados() {
   const { tipo, categoria, busca, ordenacao } = state.filtro;
   const termo = busca.trim().toLowerCase();

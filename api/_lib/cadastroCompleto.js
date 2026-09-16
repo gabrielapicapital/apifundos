@@ -1,5 +1,5 @@
 import { sql } from "./db.js";
-import { fetchCadastro, normalizeCnpj } from "./cvm.js";
+import { fetchCadastro, normalizeCnpj, buscarCotistasMaisRecente } from "./cvm.js";
 
 // Grava (upsert) o cadastro completo de UM fundo em fundos_cadastro, a
 // partir de um registro já buscado (ver fetchCadastro em cvm.js). Não
@@ -11,13 +11,15 @@ export async function gravarCadastroCompleto(fundoId, registro) {
       situacao, classificacao_cvm, classificacao_anbima, tipo_classe,
       indicador_desempenho, permite_offshore, forma_condominio,
       tributacao_longo_prazo, publico_alvo, exclusivo, administrador,
-      gestor, patrimonio_liquido, data_patrimonio_liquido, atualizado_em
+      gestor, patrimonio_liquido, data_patrimonio_liquido,
+      numero_cotistas, data_numero_cotistas, atualizado_em
     ) VALUES (
       ${fundoId}, ${registro.codigoCvm}, ${registro.dataRegistro}, ${registro.dataConstituicao}, ${registro.primeiraCota},
       ${registro.situacao}, ${registro.classeCvm}, ${registro.classificacaoAnbima}, ${registro.tipoClasse},
       ${registro.indicadorDesempenho}, ${registro.permiteOffshore}, ${registro.formaCondominio},
       ${registro.tributacaoLongoPrazo}, ${registro.publicoAlvo}, ${registro.exclusivo}, ${registro.instituicao},
-      ${registro.gestor}, ${registro.patrimonioLiquido}, ${registro.dataPatrimonioLiquido}, now()
+      ${registro.gestor}, ${registro.patrimonioLiquido}, ${registro.dataPatrimonioLiquido},
+      ${registro.numeroCotistas ?? null}, ${registro.dataNumeroCotistas ?? null}, now()
     )
     ON CONFLICT (fundo_id) DO UPDATE SET
       codigo_cvm = EXCLUDED.codigo_cvm,
@@ -38,6 +40,8 @@ export async function gravarCadastroCompleto(fundoId, registro) {
       gestor = EXCLUDED.gestor,
       patrimonio_liquido = EXCLUDED.patrimonio_liquido,
       data_patrimonio_liquido = EXCLUDED.data_patrimonio_liquido,
+      numero_cotistas = COALESCE(EXCLUDED.numero_cotistas, fundos_cadastro.numero_cotistas),
+      data_numero_cotistas = COALESCE(EXCLUDED.data_numero_cotistas, fundos_cadastro.data_numero_cotistas),
       atualizado_em = now()
   `;
 }
@@ -45,10 +49,23 @@ export async function gravarCadastroCompleto(fundoId, registro) {
 // Busca+grava o cadastro completo de um fundo único, a partir do CNPJ. Usa
 // fetchCadastro() (cache de 6h em memória) — se for chamado logo depois de
 // outro fundo, provavelmente nem baixa o registro da CVM de novo.
+//
+// Número de cotistas vem de uma fonte separada (Informe Diário, coluna
+// NR_COTST — ver buscarCotistasMaisRecente em cvm.js): o cadastro (registro_
+// classe/cad_fi) não publica esse campo. Se essa busca falhar (ex: fundo sem
+// publicação recente), o COALESCE no upsert acima preserva o valor já salvo
+// antes em vez de apagar com null.
 export async function sincronizarCadastroFundo(fundoId, cnpjOuTicker) {
   const cadastro = await fetchCadastro();
   const registro = cadastro.get(normalizeCnpj(cnpjOuTicker));
   if (!registro) return false;
+
+  const cotistas = await buscarCotistasMaisRecente(cnpjOuTicker).catch(() => null);
+  if (cotistas) {
+    registro.numeroCotistas = cotistas.numeroCotistas;
+    registro.dataNumeroCotistas = cotistas.data;
+  }
+
   await gravarCadastroCompleto(fundoId, registro);
   return true;
 }

@@ -84,5 +84,19 @@ export default async function handler(req, res) {
     )
   `;
 
+  // Composição da carteira (dataset CDA da CVM, ver api/_lib/cda.js e adendo
+  // "estrutura-dados-completa" seção 6) — 1:1 com fundos, atualizado por
+  // api/sincronizar-composicao.js. "blocos" é o array [{bloco, nome, valor,
+  // percentual}] já calculado; sem linha aqui = ainda não sincronizado.
+  await sql`
+    CREATE TABLE IF NOT EXISTS fundos_composicao (
+      fundo_id TEXT PRIMARY KEY REFERENCES fundos(id) ON DELETE CASCADE,
+      competencia DATE,
+      total_geral NUMERIC,
+      blocos JSONB NOT NULL,
+      atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+
   res.status(200).json({ ok: true });
 }

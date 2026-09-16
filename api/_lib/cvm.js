@@ -278,6 +278,7 @@ async function fetchInformeMes(key) {
   const idxData = header.indexOf("DT_COMPTC");
   const idxQuota = header.indexOf("VL_QUOTA");
   const idxSubclasse = header.indexOf("ID_SUBCLASSE");
+  const idxCotistas = header.indexOf("NR_COTST");
 
   const byCnpj = new Map();
   for (let i = 1; i < lines.length; i++) {
@@ -287,7 +288,12 @@ async function fetchInformeMes(key) {
     const cnpjDigits = normalizeCnpj(cols[idxCnpj]);
     if (!cnpjDigits) continue;
     if (cols[idxSubclasse]) continue; // fica só com a classe principal
-    const entryData = { data: cols[idxData], vlQuota: parseFloat(cols[idxQuota]) };
+    const nrCotst = idxCotistas >= 0 ? parseInt(cols[idxCotistas], 10) : NaN;
+    const entryData = {
+      data: cols[idxData],
+      vlQuota: parseFloat(cols[idxQuota]),
+      nrCotst: Number.isFinite(nrCotst) ? nrCotst : null,
+    };
     if (!byCnpj.has(cnpjDigits)) byCnpj.set(cnpjDigits, []);
     byCnpj.get(cnpjDigits).push(entryData);
   }
@@ -343,6 +349,27 @@ export async function buscarCotaMaisRecente(cnpj) {
     if (rows && rows.length) {
       const ultimo = rows.reduce((a, b) => (a.data > b.data ? a : b));
       return { data: ultimo.data, cota: ultimo.vlQuota };
+    }
+  }
+  return null;
+}
+
+// Número de cotistas totais mais recente disponível pro fundo (coluna
+// NR_COTST do Informe Diário — mesmo arquivo já baixado por buscarCotaPorCnpjData/
+// buscarCotaMaisRecente, ver adendo "estrutura-dados-completa", seção 2).
+// Não inventa: retorna null se a coluna vier vazia pra todas as linhas do
+// fundo no mês (alguns fundos não publicam esse campo).
+export async function buscarCotistasMaisRecente(cnpj) {
+  const cnpjDigits = normalizeCnpj(cnpj);
+  const hoje = new Date();
+  const key = monthKey(hoje);
+
+  for (const delta of [0, -1, -2]) {
+    const mapa = await fetchInformeMes(adjacentMonth(key, delta));
+    const rows = (mapa.get(cnpjDigits) || []).filter((r) => r.nrCotst != null);
+    if (rows.length) {
+      const ultimo = rows.reduce((a, b) => (a.data > b.data ? a : b));
+      return { data: ultimo.data, numeroCotistas: ultimo.nrCotst };
     }
   }
   return null;

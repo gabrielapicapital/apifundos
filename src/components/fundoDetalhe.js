@@ -1,4 +1,4 @@
-import { getState, buscarHistorico, buscarBenchmark, buscarCadastro, updateDiagnostico } from "../state/store.js";
+import { getState, buscarHistorico, buscarBenchmark, buscarCadastro, buscarComposicao, updateDiagnostico } from "../state/store.js";
 import { voltarParaLista } from "../router.js";
 import { fmtBRL, fmtPct, fmtDateBR, fmtNumber } from "../lib/format.js";
 import { BENCHMARK_POR_CATEGORIA, calcularPeriodos } from "../lib/periodos.js";
@@ -371,7 +371,8 @@ function graficoLinhaSimples(canvasId, chaveInstancia, pontos, cor, sufixo) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y.toFixed(2).replace(".", ",")}${sufixo}` } } },
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false, callbacks: { label: (ctx) => `${ctx.parsed.y.toFixed(2).replace(".", ",")}${sufixo}` } } },
       scales: { x: { ticks: { maxTicksLimit: 8 } }, y: { ticks: { callback: (v) => v + sufixo } } },
     },
   });
@@ -390,15 +391,81 @@ function carregarIndices(historico) {
   });
 }
 
-// ---- Aba 4: Carteira (fase 2 — composição ainda não integrada) -----------
+// ---- Aba 4: Carteira -------------------------------------------------------
+// Fonte: dataset CDA da CVM (Composição e Diversificação das Aplicações),
+// sincronizado por api/sincronizar-composicao.js — ver adendo "estrutura-
+// dados-completa", seção 6. ETFs não entram (não têm CNPJ nesse dataset).
 
-function renderAbaCarteira() {
+const CORES_BLOCO = {
+  1: "#0D2A54",
+  2: "#2F6FA8",
+  3: "#5FA3D0",
+  4: "#AA7D41",
+  5: "#C9A26A",
+  6: "#1E7A4C",
+  7: "#7A5FB0",
+  8: "#8A97A6",
+};
+
+function linhaCarteiraHtml(b) {
+  return `
+    <tr>
+      <td><span class="carteira-dot" style="color:${CORES_BLOCO[b.bloco]}">●</span>${b.nome}</td>
+      <td class="num">${fmtBRL(b.valor)}</td>
+      <td class="num">${b.percentual.toFixed(1).replace(".", ",")}%</td>
+    </tr>`;
+}
+
+function renderAbaCarteira(composicao) {
+  if (!composicao) {
+    return `
+      <div class="card">
+        <h3>Composição da carteira</h3>
+        <p class="pending">Ainda não disponível pra esse fundo — a composição vem do dataset CDA da CVM, sincronizado numa rotina separada (ver "Editar dados do fundo"). ETFs não têm esse dado (replicam um índice, não uma carteira discricionária).</p>
+      </div>
+    `;
+  }
+  const relevantes = [...composicao.blocos].sort((a, b) => b.valor - a.valor);
   return `
     <div class="card">
-      <h3>Composição da carteira</h3>
-      <p class="pending">Ainda não disponível — a composição da carteira vem de um demonstrativo diferente da CVM (cobertura variável por tipo de fundo), planejado como próxima etapa. Nenhum dado estimado é mostrado aqui enquanto essa integração não existir.</p>
+      <div class="card-header-row">
+        <div>
+          <h3>Composição da carteira</h3>
+          <p class="sub">Competência ${fmtDateBR(composicao.competencia)} · dataset CDA da CVM</p>
+        </div>
+      </div>
+      <div class="carteira-layout">
+        <div class="evolucao-chart-wrap"><div class="evolucao-chart-canvas-box" style="height:260px;"><canvas id="carteiraChart"></canvas></div></div>
+        <table class="bench-table carteira-table">
+          <thead><tr><th>Categoria</th><th>Valor de mercado</th><th>% da carteira</th></tr></thead>
+          <tbody>${relevantes.map(linhaCarteiraHtml).join("")}</tbody>
+        </table>
+      </div>
     </div>
   `;
+}
+
+function carregarCarteira(composicao) {
+  const canvas = document.getElementById("carteiraChart");
+  if (!canvas) return;
+  if (chartInstances.carteira) chartInstances.carteira.destroy();
+  const dados = [...composicao.blocos].filter((b) => b.valor > 0).sort((a, b) => b.valor - a.valor);
+  chartInstances.carteira = new Chart(canvas.getContext("2d"), {
+    type: "doughnut",
+    data: {
+      labels: dados.map((b) => b.nome),
+      datasets: [{ data: dados.map((b) => b.percentual), backgroundColor: dados.map((b) => CORES_BLOCO[b.bloco]), borderWidth: 0 }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "nearest", intersect: true },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed.toFixed(1).replace(".", ",")}%` } },
+      },
+    },
+  });
 }
 
 // ---- Orquestração ---------------------------------------------------------
@@ -406,7 +473,7 @@ function renderAbaCarteira() {
 async function renderAbaAtiva() {
   const content = document.getElementById("detalheTabContent");
   if (!content || !dadosCarregados) return;
-  const { fundo, cadastro, historico } = dadosCarregados;
+  const { fundo, cadastro, historico, composicao } = dadosCarregados;
 
   if (abaAtiva === "info") {
     content.innerHTML = renderAbaInfo(fundo, cadastro);
@@ -431,7 +498,8 @@ async function renderAbaAtiva() {
     content.innerHTML = renderAbaIndices();
     carregarIndices(historico);
   } else if (abaAtiva === "carteira") {
-    content.innerHTML = renderAbaCarteira();
+    content.innerHTML = renderAbaCarteira(composicao);
+    if (composicao) carregarCarteira(composicao);
   }
 }
 
@@ -454,10 +522,14 @@ export async function render(fundoId) {
 
   benchmarkSelecionado = BENCHMARK_POR_CATEGORIA[fundo.categoria] || "CDI";
 
-  const [cadastro, historico] = await Promise.all([buscarCadastro(fundoId), buscarHistorico(fundoId)]);
+  const [cadastro, historico, composicao] = await Promise.all([
+    buscarCadastro(fundoId),
+    buscarHistorico(fundoId),
+    buscarComposicao(fundoId),
+  ]);
   if (fundoAtualId !== fundoId) return; // usuário já navegou pra outro fundo
 
-  dadosCarregados = { fundo, cadastro, historico };
+  dadosCarregados = { fundo, cadastro, historico, composicao };
   renderShell(fundo, cadastro);
   await renderAbaAtiva();
 }
