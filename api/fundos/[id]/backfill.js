@@ -16,6 +16,13 @@ import {
 // salvo: busca de uma vez toda a cota real desde a data de compra até hoje
 // (em vez de esperar a rotina diária acumular um ponto por dia), atualiza
 // preco_atual pra cota de hoje e garante o benchmark da categoria dele.
+//
+// Um fundo antigo pode precisar de muitos meses de Informe Diário (cada um
+// um arquivo grande, baixado inteiro só pra tirar as linhas de um CNPJ) —
+// isso pode passar dos ~90s de orçamento da função numa chamada só. Por
+// isso aceita `desde`/`ate` (query, formato AAAA-MM-DD) opcionais pra
+// processar um pedaço do intervalo por vez, chamado várias vezes em
+// sequência por fora (ver README) até cobrir a data de adição real.
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Método não permitido" });
@@ -35,31 +42,40 @@ export default async function handler(req, res) {
     return;
   }
 
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hojeReal = new Date().toISOString().slice(0, 10);
+  const inicioCompleto = limitarInicio(f.data_adicao.toISOString().slice(0, 10), hojeReal);
+  const desde = typeof req.query.desde === "string" && req.query.desde > inicioCompleto ? req.query.desde : inicioCompleto;
+  const fim = typeof req.query.ate === "string" && req.query.ate < hojeReal ? req.query.ate : hojeReal;
+
   const alvo = {
     id: f.id,
     tipo: f.tipo,
     categoria: f.categoria,
     cnpjOuTicker: f.cnpj_ou_ticker,
-    inicio: limitarInicio(f.data_adicao.toISOString().slice(0, 10), hoje),
+    inicio: desde,
   };
 
-  const relatorio = { pontosGravados: 0, cotaAtualizada: false, benchmarksGravados: 0, erros: [] };
+  const relatorio = { pontosGravados: 0, cotaAtualizada: false, benchmarksGravados: 0, erros: [], intervalo: { desde, ate: fim } };
 
   const coleta =
     f.tipo === "ETF"
-      ? await coletarHistoricoEtf([alvo], hoje, relatorio.erros)
-      : await coletarHistoricoCvm([alvo], hoje, relatorio.erros);
+      ? await coletarHistoricoEtf([alvo], fim, relatorio.erros)
+      : await coletarHistoricoCvm([alvo], fim, relatorio.erros);
 
   relatorio.pontosGravados = await gravarHistoricoEmLotes(coleta.linhasParaGravar);
 
-  if (f.tipo === "ETF") {
+  // Só limpa dado antigo/errado se esse pedaço começa desde o início de
+  // verdade — senão apagaria histórico real já gravado por um pedaço
+  // anterior (ver limparHistoricoAntesDe).
+  if (f.tipo === "ETF" && desde === inicioCompleto) {
     const primeiraValida = coleta.primeiraDataValidaPorFundo?.get(f.id);
     if (primeiraValida) await limparHistoricoAntesDe(f.id, primeiraValida, f.data_adicao.toISOString().slice(0, 10));
   }
 
+  // Só atualiza preco_atual/patrimonio se esse pedaço realmente cobre até
+  // hoje — um pedaço mais antigo não deve sobrescrever com uma cota velha.
   const ultima = coleta.ultimaCotaPorFundo.get(f.id);
-  if (ultima) {
+  if (ultima && fim === hojeReal) {
     await sql`
       UPDATE fundos SET preco_atual = ${ultima.cota}, patrimonio = quantidade_cotas * ${ultima.cota}, atualizado_em = now()
       WHERE id = ${f.id}
@@ -68,7 +84,7 @@ export default async function handler(req, res) {
   }
 
   const benchmark = BENCHMARK_POR_CATEGORIA[f.categoria] || "CDI";
-  relatorio.benchmarksGravados = await garantirBenchmark(benchmark, alvo.inicio, hoje, relatorio.erros);
+  relatorio.benchmarksGravados = await garantirBenchmark(benchmark, desde, fim, relatorio.erros);
 
   res.status(200).json(relatorio);
 }
