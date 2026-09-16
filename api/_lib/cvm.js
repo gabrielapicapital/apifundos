@@ -23,6 +23,24 @@ function formatCnpj(digits) {
   return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`;
 }
 
+// "S"/"N" (ou vazio) -> true/false/null — usado nos campos sim/não do
+// cadastro CVM (Exclusivo, Tributação longo prazo, 100% exterior...).
+function simNaoParaBool(v) {
+  const s = (v || "").trim().toUpperCase();
+  if (s === "S") return true;
+  if (s === "N") return false;
+  return null;
+}
+
+function paraNumero(v) {
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function paraDataOuNull(v) {
+  return v && v.trim() ? v.trim() : null;
+}
+
 // Cache em memória do processo: sobrevive entre chamadas na mesma instância
 // "quente" da função serverless, mas não é garantido (cold start limpa
 // tudo). É só uma otimização best-effort, não uma fonte de verdade.
@@ -55,9 +73,12 @@ async function fetchRegistroAtual() {
   const { header: hFundo, rows: rFundo } = parseDelimited(fundoEntry.getData().toString("latin1"));
   const idxFundoId = hFundo.indexOf("ID_Registro_Fundo");
   const idxFundoAdmin = hFundo.indexOf("Administrador");
+  const idxFundoGestor = hFundo.indexOf("Gestor");
   const adminPorFundoId = new Map();
+  const gestorPorFundoId = new Map();
   for (const cols of rFundo) {
     adminPorFundoId.set(cols[idxFundoId], (cols[idxFundoAdmin] || "").trim());
+    gestorPorFundoId.set(cols[idxFundoId], (cols[idxFundoGestor] || "").trim());
   }
 
   const { header: hClasse, rows: rClasse } = parseDelimited(classeEntry.getData().toString("latin1"));
@@ -66,6 +87,20 @@ async function fetchRegistroAtual() {
   const idxClasseSit = hClasse.indexOf("Situacao");
   const idxClasseClassif = hClasse.indexOf("Classificacao");
   const idxClasseFundoId = hClasse.indexOf("ID_Registro_Fundo");
+  const idxCodigoCvm = hClasse.indexOf("Codigo_CVM");
+  const idxDataRegistro = hClasse.indexOf("Data_Registro");
+  const idxDataConstituicao = hClasse.indexOf("Data_Constituicao");
+  const idxPrimeiraCota = hClasse.indexOf("Data_Inicio");
+  const idxTipoClasse = hClasse.indexOf("Tipo_Classe");
+  const idxIndicadorDesempenho = hClasse.indexOf("Indicador_Desempenho");
+  const idxClassificacaoAnbima = hClasse.indexOf("Classificacao_Anbima");
+  const idxTributacaoLongoPrazo = hClasse.indexOf("Tributacao_Longo_Prazo");
+  const idxOffshore = hClasse.indexOf("Permitido_Aplicacao_CemPorCento_Exterior");
+  const idxFormaCondominio = hClasse.indexOf("Forma_Condominio");
+  const idxExclusivo = hClasse.indexOf("Exclusivo");
+  const idxPublicoAlvo = hClasse.indexOf("Publico_Alvo");
+  const idxPatrimonioLiquido = hClasse.indexOf("Patrimonio_Liquido");
+  const idxDataPatrimonioLiquido = hClasse.indexOf("Data_Patrimonio_Liquido");
 
   const map = new Map();
   for (const cols of rClasse) {
@@ -79,6 +114,21 @@ async function fetchRegistroAtual() {
       instituicao: adminPorFundoId.get(cols[idxClasseFundoId]) || "",
       classeCvm: (cols[idxClasseClassif] || "").trim(),
       situacao: (cols[idxClasseSit] || "").trim(),
+      gestor: gestorPorFundoId.get(cols[idxClasseFundoId]) || "",
+      codigoCvm: (cols[idxCodigoCvm] || "").trim() || null,
+      dataRegistro: paraDataOuNull(cols[idxDataRegistro]),
+      dataConstituicao: paraDataOuNull(cols[idxDataConstituicao]),
+      primeiraCota: paraDataOuNull(cols[idxPrimeiraCota]),
+      tipoClasse: (cols[idxTipoClasse] || "").trim() || null,
+      indicadorDesempenho: (cols[idxIndicadorDesempenho] || "").trim() || null,
+      classificacaoAnbima: (cols[idxClassificacaoAnbima] || "").trim() || null,
+      tributacaoLongoPrazo: simNaoParaBool(cols[idxTributacaoLongoPrazo]),
+      permiteOffshore: simNaoParaBool(cols[idxOffshore]),
+      formaCondominio: (cols[idxFormaCondominio] || "").trim() || null,
+      exclusivo: simNaoParaBool(cols[idxExclusivo]),
+      publicoAlvo: (cols[idxPublicoAlvo] || "").trim() || null,
+      patrimonioLiquido: paraNumero(cols[idxPatrimonioLiquido]),
+      dataPatrimonioLiquido: paraDataOuNull(cols[idxDataPatrimonioLiquido]),
     });
   }
   return map;
@@ -92,8 +142,21 @@ async function fetchCadastroLegado() {
   const idxCnpj = header.indexOf("CNPJ_FUNDO");
   const idxNome = header.indexOf("DENOM_SOCIAL");
   const idxAdmin = header.indexOf("ADMIN");
+  const idxGestor = header.indexOf("GESTOR");
   const idxClasse = header.indexOf("CLASSE");
   const idxSit = header.indexOf("SIT");
+  const idxCodigoCvm = header.indexOf("CD_CVM");
+  const idxDataRegistro = header.indexOf("DT_REG");
+  const idxDataConstituicao = header.indexOf("DT_CONST");
+  const idxPrimeiraCota = header.indexOf("DT_INI_ATIV");
+  const idxClassificacaoAnbima = header.indexOf("CLASSE_ANBIMA");
+  const idxTributacaoLongoPrazo = header.indexOf("TRIB_LPRAZO");
+  const idxOffshore = header.indexOf("INVEST_CEMPR_EXTER");
+  const idxFormaCondominio = header.indexOf("CONDOM");
+  const idxExclusivo = header.indexOf("FUNDO_EXCLUSIVO");
+  const idxPublicoAlvo = header.indexOf("PUBLICO_ALVO");
+  const idxPatrimonioLiquido = header.indexOf("VL_PATRIM_LIQ");
+  const idxDataPatrimonioLiquido = header.indexOf("DT_PATRIM_LIQ");
 
   const map = new Map();
   for (const cols of rows) {
@@ -107,6 +170,21 @@ async function fetchCadastroLegado() {
       instituicao: (cols[idxAdmin] || "").trim(),
       classeCvm: (cols[idxClasse] || "").trim(),
       situacao: (cols[idxSit] || "").trim(),
+      gestor: (cols[idxGestor] || "").trim(),
+      codigoCvm: (cols[idxCodigoCvm] || "").trim() || null,
+      dataRegistro: paraDataOuNull(cols[idxDataRegistro]),
+      dataConstituicao: paraDataOuNull(cols[idxDataConstituicao]),
+      primeiraCota: paraDataOuNull(cols[idxPrimeiraCota]),
+      tipoClasse: null,
+      indicadorDesempenho: null,
+      classificacaoAnbima: (cols[idxClassificacaoAnbima] || "").trim() || null,
+      tributacaoLongoPrazo: simNaoParaBool(cols[idxTributacaoLongoPrazo]),
+      permiteOffshore: simNaoParaBool(cols[idxOffshore]),
+      formaCondominio: (cols[idxFormaCondominio] || "").trim() || null,
+      exclusivo: simNaoParaBool(cols[idxExclusivo]),
+      publicoAlvo: (cols[idxPublicoAlvo] || "").trim() || null,
+      patrimonioLiquido: paraNumero(cols[idxPatrimonioLiquido]),
+      dataPatrimonioLiquido: paraDataOuNull(cols[idxDataPatrimonioLiquido]),
     });
   }
   return map;

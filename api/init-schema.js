@@ -42,15 +42,45 @@ export default async function handler(req, res) {
 
   await sql`CREATE INDEX IF NOT EXISTS historico_precos_fundo_id_idx ON historico_precos (fundo_id)`;
 
-  // Série histórica dos benchmarks (CDI, Ibovespa, S&P 500) — "valor" é
-  // sempre um número-índice comparável (nível acumulado), não uma taxa.
-  // Para o CDI isso é (1 + taxa_diaria) composto a partir de uma base 100.
+  // Série histórica dos benchmarks (CDI, Ibovespa, S&P 500, IPCA) — "valor"
+  // é sempre um número-índice comparável (nível acumulado), não uma taxa.
+  // Para o CDI/IPCA isso é a taxa composta a partir de uma base 100.
   await sql`
     CREATE TABLE IF NOT EXISTS benchmark_historico (
       benchmark TEXT NOT NULL,
       data DATE NOT NULL,
       valor NUMERIC NOT NULL,
       PRIMARY KEY (benchmark, data)
+    )
+  `;
+
+  // Cadastro completo da CVM (adendo "estrutura-dados-completa") — 1:1 com
+  // fundos, atualizado por api/sincronizar-cadastro.js. Nunca inventa um
+  // campo: fica NULL quando a CVM não publica aquele dado pro fundo.
+  await sql`
+    CREATE TABLE IF NOT EXISTS fundos_cadastro (
+      fundo_id TEXT PRIMARY KEY REFERENCES fundos(id) ON DELETE CASCADE,
+      codigo_cvm TEXT,
+      data_registro DATE,
+      data_constituicao DATE,
+      primeira_cota DATE,
+      situacao TEXT,
+      classificacao_cvm TEXT,
+      classificacao_anbima TEXT,
+      tipo_classe TEXT,
+      indicador_desempenho TEXT,
+      permite_offshore BOOLEAN,
+      forma_condominio TEXT,
+      tributacao_longo_prazo BOOLEAN,
+      publico_alvo TEXT,
+      exclusivo BOOLEAN,
+      administrador TEXT,
+      gestor TEXT,
+      patrimonio_liquido NUMERIC,
+      data_patrimonio_liquido DATE,
+      numero_cotistas INTEGER,
+      data_numero_cotistas DATE,
+      atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `;
 

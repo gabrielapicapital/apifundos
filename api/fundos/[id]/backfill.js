@@ -9,6 +9,7 @@ import {
   garantirBenchmark,
   limparHistoricoAntesDe,
 } from "../../_lib/backfill.js";
+import { sincronizarCadastroFundo } from "../../_lib/cadastroCompleto.js";
 
 // POST /api/fundos/{id}/backfill — versão de UM fundo só do backfill em
 // lote (api/backfill-historico.js), disparada automaticamente pelo modal
@@ -55,7 +56,18 @@ export default async function handler(req, res) {
     inicio: desde,
   };
 
-  const relatorio = { pontosGravados: 0, cotaAtualizada: false, benchmarksGravados: 0, erros: [], intervalo: { desde, ate: fim } };
+  const relatorio = { pontosGravados: 0, cotaAtualizada: false, benchmarksGravados: 0, cadastroSincronizado: false, erros: [], intervalo: { desde, ate: fim } };
+
+  // Cadastro completo (adendo "estrutura-dados-completa") só precisa ser
+  // buscado uma vez, não em todo pedaço de um backfill fatiado. ETF não tem
+  // CNPJ/cadastro na CVM (usa ticker).
+  if (f.tipo !== "ETF" && desde === inicioCompleto) {
+    try {
+      relatorio.cadastroSincronizado = await sincronizarCadastroFundo(f.id, f.cnpj_ou_ticker);
+    } catch (err) {
+      relatorio.erros.push({ etapa: "cadastro", erro: err.message });
+    }
+  }
 
   const coleta =
     f.tipo === "ETF"
