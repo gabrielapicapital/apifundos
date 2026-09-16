@@ -2,7 +2,7 @@
 // CACHE_VERSION (ex: para a data/hash do build) para forçar a invalidação do
 // cache antigo — sem isso, consultores continuariam vendo um cache obsoleto
 // depois de ficarem offline uma vez.
-const CACHE_VERSION = "v7";
+const CACHE_VERSION = "v8";
 const CACHE_NAME = `api-capital-fundos-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -17,9 +17,10 @@ const PRECACHE_URLS = [
   "./src/state/store.js",
   "./src/lib/format.js",
   "./src/lib/analytics.js",
-  "./src/lib/illustrative.js",
   "./src/lib/icons.js",
   "./src/lib/periodos.js",
+  "./src/lib/indices.js",
+  "./src/router.js",
   "./src/components/tabsChips.js",
   "./src/components/summary.js",
   "./src/components/comparator.js",
@@ -27,7 +28,7 @@ const PRECACHE_URLS = [
   "./src/components/adminAuth.js",
   "./src/components/addFundModal.js",
   "./src/components/editFundModal.js",
-  "./src/components/benchmarkChart.js",
+  "./src/components/fundoDetalhe.js",
   "./src/components/dateCalendar.js",
   "./src/components/misc.js",
   "./public/logo-pelicano-branco.svg",

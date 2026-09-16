@@ -1,7 +1,7 @@
 import { sql } from "../../_lib/db.js";
 import { requireAdmin } from "../../_lib/auth.js";
 import {
-  BENCHMARK_POR_CATEGORIA,
+  BENCHMARKS_DISPONIVEIS,
   limitarInicio,
   gravarHistoricoEmLotes,
   coletarHistoricoCvm,
@@ -95,8 +95,11 @@ export default async function handler(req, res) {
     relatorio.cotaAtualizada = true;
   }
 
-  const benchmark = BENCHMARK_POR_CATEGORIA[f.categoria] || "CDI";
-  relatorio.benchmarksGravados = await garantirBenchmark(benchmark, desde, fim, relatorio.erros);
+  // Garante os 4 benchmarks do seletor "Comparar com", não só o default da
+  // categoria — qualquer fundo pode trocar de benchmark na tela.
+  for (const benchmark of BENCHMARKS_DISPONIVEIS) {
+    relatorio.benchmarksGravados += await garantirBenchmark(benchmark, desde, fim, relatorio.erros);
+  }
 
   res.status(200).json(relatorio);
 }

@@ -1,7 +1,7 @@
 import { sql } from "./_lib/db.js";
 import { requireAdmin } from "./_lib/auth.js";
 import {
-  BENCHMARK_POR_CATEGORIA,
+  BENCHMARKS_DISPONIVEIS,
   limitarInicio,
   gravarHistoricoEmLotes,
   coletarHistoricoCvm,
@@ -63,11 +63,12 @@ export default async function handler(req, res) {
     `;
   }
 
-  // --- Benchmarks: só os que algum fundo alvo realmente usa ---
+  // --- Benchmarks: os 4 do seletor "Comparar com" (adendo pagina-detalhe-
+  // estrutura, seção 4.1) cobrindo desde o fundo mais antigo, pra qualquer
+  // fundo poder trocar de benchmark na hora sem precisar buscar de novo ---
   const inicioGeral = alvo.length ? alvo.reduce((min, f) => (f.inicio < min ? f.inicio : min), alvo[0].inicio) : hoje;
-  const benchmarksNecessarios = new Set(alvo.map((f) => BENCHMARK_POR_CATEGORIA[f.categoria] || "CDI"));
 
-  for (const benchmark of benchmarksNecessarios) {
+  for (const benchmark of BENCHMARKS_DISPONIVEIS) {
     relatorio.benchmarksGravados += await garantirBenchmark(benchmark, inicioGeral, hoje, relatorio.erros);
   }
 

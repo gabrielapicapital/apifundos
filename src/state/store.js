@@ -17,7 +17,6 @@ let state = {
     busca: "",
     ordenacao: "ret-desc",
   },
-  expandedId: null,
   editMode: false,
 };
 
@@ -64,12 +63,7 @@ export async function hydrate() {
 }
 
 export function setFiltro(patch) {
-  state = { ...state, filtro: { ...state.filtro, ...patch }, expandedId: null };
-  notify();
-}
-
-export function toggleExpanded(id) {
-  state = { ...state, expandedId: state.expandedId === id ? null : id };
+  state = { ...state, filtro: { ...state.filtro, ...patch } };
   notify();
 }
 
@@ -106,11 +100,7 @@ export async function backfillFundo(id) {
 
 export async function removeFundo(id) {
   await adminFetch(`/api/fundos/${id}`, { method: "DELETE" });
-  state = {
-    ...state,
-    fundos: state.fundos.filter((f) => f.id !== id),
-    expandedId: state.expandedId === id ? null : state.expandedId,
-  };
+  state = { ...state, fundos: state.fundos.filter((f) => f.id !== id) };
   notify();
 }
 
@@ -125,8 +115,7 @@ export async function updateDiagnostico(id, texto) {
 }
 
 // Histórico real de preços de um fundo (para o gráfico de evolução). Vazio
-// quando ainda não há pontos suficientes — nesse caso o gráfico continua
-// mostrando o exemplo ilustrativo (ver benchmarkChart.js).
+// quando ainda não há pontos suficientes (ver src/components/fundoDetalhe.js).
 export async function buscarHistorico(id) {
   try {
     return await adminFetch(`/api/fundos/${id}`, { method: "GET" });
@@ -144,6 +133,17 @@ export async function buscarBenchmark(nome) {
   } catch (e) {
     console.error("Falha ao buscar benchmark:", e);
     return [];
+  }
+}
+
+// Cadastro completo da CVM (adendo "estrutura-dados-completa") — null se
+// ainda não foi sincronizado pra esse fundo (ver api/sincronizar-cadastro.js).
+export async function buscarCadastro(id) {
+  try {
+    return await adminFetch(`/api/fundos/${id}/cadastro`, { method: "GET" });
+  } catch (e) {
+    console.error("Falha ao buscar cadastro completo:", e);
+    return null;
   }
 }
 

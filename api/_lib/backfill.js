@@ -1,6 +1,6 @@
 import { sql } from "./db.js";
 import { fetchInformeMes, mesesEntre, normalizeCnpj } from "./cvm.js";
-import { buscarSerieYahoo, buscarCdiSerieIndice } from "./mercado.js";
+import { buscarSerieYahoo, buscarCdiSerieIndice, buscarIpcaSerieIndice } from "./mercado.js";
 import { buscarSerieFidcMensal } from "./cvmFidc.js";
 
 // Lógica compartilhada entre o backfill em lote (api/backfill-historico.js,
@@ -15,7 +15,12 @@ export const BENCHMARK_POR_CATEGORIA = {
   "Global Renda Variável": "S&P 500",
 };
 
-export const TICKER_BENCHMARK = { CDI: null, Ibovespa: "^BVSP", "S&P 500": "^GSPC" };
+export const TICKER_BENCHMARK = { CDI: null, Ibovespa: "^BVSP", "S&P 500": "^GSPC", IPCA: null };
+
+// Os 4 benchmarks que o seletor "Comparar com" da aba Rentabilidade oferece
+// pra qualquer fundo (adendo pagina-detalhe-estrutura, seção 4.1) — além do
+// default por categoria em BENCHMARK_POR_CATEGORIA.
+export const BENCHMARKS_DISPONIVEIS = ["CDI", "Ibovespa", "S&P 500", "IPCA"];
 
 // O gráfico deve acompanhar desde a data real de compra até hoje, sem
 // truncar — não faz sentido comparar contra um benchmark cujo início é só
@@ -192,10 +197,10 @@ export async function garantirBenchmark(benchmark, inicioISO, hoje, erros) {
   }
 
   try {
-    const serie =
-      benchmark === "CDI"
-        ? await buscarCdiSerieIndice(inicioISO, hoje)
-        : await buscarSerieYahoo(TICKER_BENCHMARK[benchmark], inicioISO, hoje);
+    let serie;
+    if (benchmark === "CDI") serie = await buscarCdiSerieIndice(inicioISO, hoje);
+    else if (benchmark === "IPCA") serie = await buscarIpcaSerieIndice(inicioISO, hoje);
+    else serie = await buscarSerieYahoo(TICKER_BENCHMARK[benchmark], inicioISO, hoje);
     return await gravarBenchmarkEmLotes(benchmark, serie);
   } catch (err) {
     erros.push({ benchmark, erro: err.message });

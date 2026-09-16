@@ -29,6 +29,24 @@ export async function buscarCdiSerieIndice(dataInicialISO, dataFinalISO) {
   });
 }
 
+// IPCA: mesmo formato do CDI, só que a série do BCB (série 433) já vem
+// mensal (não diária) — um ponto por mês, data sempre "01/MM/AAAA".
+export async function buscarIpcaSerieIndice(dataInicialISO, dataFinalISO) {
+  const [yi, mi, di] = dataInicialISO.split("-");
+  const [yf, mf, df] = dataFinalISO.split("-");
+  const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados?dataInicial=${di}/${mi}/${yi}&dataFinal=${df}/${mf}/${yf}&formato=json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Falha ao buscar série do IPCA: HTTP ${res.status}`);
+  const dados = await res.json();
+
+  let acumulado = 100;
+  return dados.map((d) => {
+    const [dd, mm, yy] = d.data.split("/");
+    acumulado *= 1 + parseFloat(d.valor) / 100;
+    return { data: `${yy}-${mm}-${dd}`, valor: acumulado };
+  });
+}
+
 // ETFs e índices (Ibovespa "^BVSP", S&P 500 "^GSPC"): não têm CORS liberado
 // para o navegador (testado), mas funções serverless não são sujeitas a CORS
 // (é restrição só do navegador), então funciona normalmente aqui.

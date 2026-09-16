@@ -2,6 +2,9 @@
   "crons": [
     { "path": "/api/cron/atualizar-precos", "schedule": "0 21 * * 1-5" }
   ],
+  "rewrites": [
+    { "source": "/fundos/:id", "destination": "/index.html" }
+  ],
   "functions": {
     "api/cron/atualizar-precos.js": { "maxDuration": 60 },
     "api/cvm-lookup.js": { "maxDuration": 90 },

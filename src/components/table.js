@@ -1,80 +1,30 @@
-import { fmtPct, fmtBRL, fmtDateBR, fmtNumber } from "../lib/format.js";
+import { fmtPct, fmtBRL, fmtDateBR } from "../lib/format.js";
 import { TIPO_LABELS } from "../config.js";
-import { toggleExpanded, removeFundo, updateDiagnostico } from "../state/store.js";
-import * as editFundModal from "./editFundModal.js";
-import * as benchmarkChart from "./benchmarkChart.js";
-import { ICON_CHEVRON_DOWN, ICON_TRIANGLE_ALERT, ICON_TRASH } from "../lib/icons.js";
+import { removeFundo } from "../state/store.js";
+import { irParaFundo } from "../router.js";
+import { ICON_TRIANGLE_ALERT, ICON_TRASH } from "../lib/icons.js";
 
-function detailHtml(f, editMode) {
-  return `
-    ${editMode ? `<div style="margin-bottom:4px;"><button class="add-fund-btn" data-edit-fundo="${f.id}">Editar dados do fundo</button></div>` : ""}
-    <div class="detail-section">
-      <h4>Visão geral</h4>
-      <div class="detail-grid">
-        <div>Tipo<span>${TIPO_LABELS[f.tipo] || f.tipo}</span></div>
-        <div>Gestora / Instituição<span>${f.instituicao}</span></div>
-        <div>Categoria / Estratégia<span>${f.categoria}</span></div>
-        <div>Patrimônio na posição<span>${fmtBRL(f.patrimonio)}</span></div>
-      </div>
-    </div>
-
-    <div class="detail-section">
-      <h4>Performance</h4>
-      <div class="detail-grid">
-        <div>Quantidade de cotas<span>${fmtNumber(f.quantidadeCotas)}</span></div>
-        <div>Preço de entrada<span>${f.precoEntrada != null ? fmtBRL(f.precoEntrada) : "-"}</span></div>
-        <div>Preço atual<span>${fmtBRL(f.precoAtual)}</span>${f.tipo === "FIDC" ? `<span id="fidc-nota-${f.id}" class="pending"></span>` : ""}</div>
-        <div>Rentabilidade desde a entrada<span>${
-          f.pendenteCorrecao
-            ? '<span class="pending">verificar entrada</span>'
-            : `<span class="${f.rentabilidadePct >= 0 ? "ret-pos" : "ret-neg"}">${fmtPct(f.rentabilidadePct)}</span>`
-        }</span></div>
-      </div>
-    </div>
-
-    ${benchmarkChart.renderDetailHtml(f)}
-
-    <div class="detail-section">
-      <h4>Diagnóstico da equipe</h4>
-      <div class="diagnostico-box">
-        ${
-          editMode
-            ? `<textarea id="diag-${f.id}" placeholder="Pontos positivos e pontos de atenção sobre esse fundo...">${f.diagnostico || ""}</textarea>
-               <button data-diag-save="${f.id}">Salvar diagnóstico</button>`
-            : `<span>${f.diagnostico ? f.diagnostico : '<span class="pending">nenhum diagnóstico registrado ainda</span>'}</span>`
-        }
-      </div>
-    </div>
-
-    ${
-      f.pendenteCorrecao
-        ? `<div class="detail-note">Este fundo entrou com R$ 1.000 fixos e cota de entrada registrada incorretamente, sem refletir a cota real do dia. Precisa de recotação (manual ou automática, via CVM) para a rentabilidade fazer sentido.</div>`
-        : ""
-    }
-  `;
-}
-
+// Clicar num fundo navega pra página própria dele (adendo "pagina-detalhe-
+// estrutura": "a linha não expande mais inline") — ver src/router.js e
+// src/components/fundoDetalhe.js.
 export function render(lista, state) {
-  const { editMode, expandedId } = state;
+  const { editMode } = state;
   document.getElementById("actionsHeader").style.display = editMode ? "table-cell" : "none";
   document.getElementById("fundColHeader").textContent = state.filtro.tipo === "Todos" ? "Fundo" : state.filtro.tipo;
 
   const tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
-  const colSpan = editMode ? 7 : 6;
 
   lista.forEach((f) => {
     const tr = document.createElement("tr");
     tr.onclick = (e) => {
       if (e.target.closest(".remove-btn")) return;
-      toggleExpanded(f.id);
+      irParaFundo(f.id);
     };
 
     const retCell = f.pendenteCorrecao
       ? `<span class="flagbadge">${ICON_TRIANGLE_ALERT}<span>verificar entrada</span></span>`
       : `<span class="${f.rentabilidadePct >= 0 ? "ret-pos" : "ret-neg"}">${fmtPct(f.rentabilidadePct)}</span>`;
-
-    const isExpanded = expandedId === f.id;
 
     tr.innerHTML = `
       <td data-label="Fundo">
@@ -83,7 +33,6 @@ export function render(lista, state) {
             <div class="fund-name">${f.nome}</div>
             <div class="fund-inst">${f.instituicao}</div>
           </div>
-          <span class="expand-chevron${isExpanded ? " open" : ""}">${ICON_CHEVRON_DOWN}</span>
         </div>
       </td>
       <td data-label="Categoria"><span class="tag tag-tipo">${TIPO_LABELS[f.tipo] || f.tipo}</span><span class="tag">${f.categoria}</span></td>
@@ -94,17 +43,6 @@ export function render(lista, state) {
       ${editMode ? `<td data-label="Ações" class="num"><button class="remove-btn" title="Remover fundo" data-remove="${f.id}">${ICON_TRASH}</button></td>` : ""}
     `;
     tbody.appendChild(tr);
-
-    if (expandedId === f.id) {
-      const detailTr = document.createElement("tr");
-      detailTr.className = "detail-row";
-      const detailTd = document.createElement("td");
-      detailTd.colSpan = colSpan;
-      detailTd.innerHTML = detailHtml(f, editMode);
-      detailTr.appendChild(detailTd);
-      tbody.appendChild(detailTr);
-      benchmarkChart.initChart(f);
-    }
   });
 
   tbody.querySelectorAll("[data-remove]").forEach((btn) => {
@@ -119,26 +57,6 @@ export function render(lista, state) {
           alert(`Não foi possível remover: ${err.message}`);
         }
       }
-    });
-  });
-
-  tbody.querySelectorAll("[data-diag-save]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const id = btn.dataset.diagSave;
-      const textarea = document.getElementById(`diag-${id}`);
-      try {
-        await updateDiagnostico(id, textarea.value.trim());
-      } catch (err) {
-        alert(`Não foi possível salvar o diagnóstico: ${err.message}`);
-      }
-    });
-  });
-
-  tbody.querySelectorAll("[data-edit-fundo]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const fundo = lista.find((f) => f.id === btn.dataset.editFundo);
-      if (fundo) editFundModal.open(fundo);
     });
   });
 }
