@@ -42,6 +42,14 @@ export default async function handler(req, res) {
 
   await sql`CREATE INDEX IF NOT EXISTS historico_precos_fundo_id_idx ON historico_precos (fundo_id)`;
 
+  // ETFs são identificados por ticker em cnpj_ou_ticker (usado pra buscar
+  // cotação no Yahoo Finance, ver api/_lib/mercado.js) — mas também são
+  // fundos regulados pela CVM, com CNPJ próprio, que não pode ir no mesmo
+  // campo sem quebrar essa busca. cnpj_cvm guarda esse CNPJ (só quando
+  // confirmado contra o cadastro oficial da CVM), pra ETFs também poderem
+  // ter cadastro completo, cotistas e composição de carteira.
+  await sql`ALTER TABLE fundos ADD COLUMN IF NOT EXISTS cnpj_cvm TEXT`;
+
   // Série histórica dos benchmarks (CDI, Ibovespa, S&P 500, IPCA) — "valor"
   // é sempre um número-índice comparável (nível acumulado), não uma taxa.
   // Para o CDI/IPCA isso é a taxa composta a partir de uma base 100.

@@ -5,12 +5,17 @@ import { sincronizarCadastroFundo } from "./_lib/cadastroCompleto.js";
 import { buscarComposicaoLote } from "./_lib/cda.js";
 
 // POST /api/sincronizar-cadastro — backfill do cadastro completo da CVM
-// (adendo "estrutura-dados-completa") pros fundos/FIDCs já cadastrados com
-// CNPJ: seções 1+2 (cadastro + número de cotistas, via cadastroCompleto.js)
-// e seção 6 (composição da carteira, via dataset CDA, cda.js). ETFs ficam de
-// fora (não têm CNPJ nesses datasets). Um POST só faz as duas partes — eram
-// dois endpoints separados, mas o Vercel Hobby tem limite de 12 funções por
-// deployment, então foram unidos aqui.
+// (adendo "estrutura-dados-completa") pros fundos/FIDCs/ETFs já cadastrados
+// com CNPJ: seções 1+2 (cadastro + número de cotistas, via
+// cadastroCompleto.js) e seção 6 (composição da carteira, via dataset CDA,
+// cda.js). Um POST só faz as duas partes — eram dois endpoints separados,
+// mas o Vercel Hobby tem limite de 12 funções por deployment, então foram
+// unidos aqui.
+//
+// ETFs não têm CNPJ em cnpj_ou_ticker (esse campo guarda o ticker, usado pra
+// buscar cotação no Yahoo — ver mercado.js) — usam cnpj_cvm, preenchido à
+// mão via PATCH /api/fundos/{id} depois de confirmar o CNPJ contra o
+// cadastro oficial da CVM (nunca por suposição de nome).
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Método não permitido" });
@@ -18,7 +23,10 @@ export default async function handler(req, res) {
   }
   if (!requireAdmin(req, res)) return;
 
-  const fundos = await sql`SELECT id, cnpj_ou_ticker FROM fundos WHERE cnpj_ou_ticker IS NOT NULL AND tipo != 'ETF'`;
+  const fundos = await sql`
+    SELECT id, COALESCE(cnpj_cvm, cnpj_ou_ticker) AS cnpj FROM fundos
+    WHERE (cnpj_cvm IS NOT NULL) OR (cnpj_ou_ticker IS NOT NULL AND tipo != 'ETF')
+  `;
 
   const relatorio = {
     cadastro: { atualizados: 0, semCadastro: [], erros: [] },
@@ -27,7 +35,7 @@ export default async function handler(req, res) {
 
   for (const f of fundos) {
     try {
-      const ok = await sincronizarCadastroFundo(f.id, f.cnpj_ou_ticker);
+      const ok = await sincronizarCadastroFundo(f.id, f.cnpj);
       if (ok) relatorio.cadastro.atualizados++;
       else relatorio.cadastro.semCadastro.push(f.id);
     } catch (err) {
@@ -36,7 +44,7 @@ export default async function handler(req, res) {
   }
 
   const porDigits = new Map();
-  for (const f of fundos) porDigits.set(normalizeCnpj(f.cnpj_ou_ticker), f.id);
+  for (const f of fundos) porDigits.set(normalizeCnpj(f.cnpj), f.id);
 
   try {
     const { competencia, porCnpj } = await buscarComposicaoLote(new Set(porDigits.keys()));

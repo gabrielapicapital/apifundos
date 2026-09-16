@@ -23,6 +23,7 @@ export function init() {
     const tipo = document.getElementById("editFundTipo").value;
     const categoria = document.getElementById("editFundCat").value;
     const cnpjOuTicker = document.getElementById("editFundCnpj").value.trim() || null;
+    const cnpjCvm = document.getElementById("editFundCnpjCvm").value.trim() || null;
     const dataAdicao = document.getElementById("editFundDate").value || null;
     const precoEntradaRaw = document.getElementById("editFundEntry").value;
     const precoAtualRaw = document.getElementById("editFundCurrent").value;
@@ -40,7 +41,7 @@ export function init() {
     }
     errBox.style.display = "none";
 
-    const patch = { nome, instituicao, tipo, categoria, cnpjOuTicker, dataAdicao, precoEntrada, precoAtual, pendenteCorrecao };
+    const patch = { nome, instituicao, tipo, categoria, cnpjOuTicker, cnpjCvm, dataAdicao, precoEntrada, precoAtual, pendenteCorrecao };
 
     // Recalcula a quantidade de cotas só quando o admin informa o valor
     // investido de verdade (ex: ao corrigir um fundo pendente com a cota real
@@ -70,6 +71,7 @@ export function open(fundo) {
   document.getElementById("editFundTipo").value = fundo.tipo;
   document.getElementById("editFundCat").value = fundo.categoria;
   document.getElementById("editFundCnpj").value = fundo.cnpjOuTicker || "";
+  document.getElementById("editFundCnpjCvm").value = fundo.cnpjCvm || "";
   document.getElementById("editFundDate").value = toISODate(fundo.dataAdicao);
   document.getElementById("editFundEntry").value = fundo.precoEntrada ?? "";
   document.getElementById("editFundCurrent").value = fundo.precoAtual;

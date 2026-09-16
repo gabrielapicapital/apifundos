@@ -9,6 +9,7 @@ function rowParaFundo(r) {
     instituicao: r.instituicao,
     categoria: r.categoria,
     cnpjOuTicker: r.cnpj_ou_ticker,
+    cnpjCvm: r.cnpj_cvm,
     dataAdicao: r.data_adicao ? r.data_adicao.toISOString().slice(0, 10) : null,
     precoEntrada: r.preco_entrada != null ? Number(r.preco_entrada) : null,
     precoAtual: Number(r.preco_atual),
