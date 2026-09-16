@@ -273,7 +273,9 @@ async function fetchInformeMes(key) {
   const text = entry.getData().toString("utf8");
 
   const lines = text.split("\n");
-  const header = lines[0].split(";");
+  // NR_COTST é a última coluna do cabeçalho — sem tirar o \r (o arquivo usa
+  // quebra de linha CRLF), o indexOf dela nunca batia e ficava sempre -1.
+  const header = lines[0].replace(/\r$/, "").split(";");
   const idxCnpj = header.indexOf("CNPJ_FUNDO_CLASSE");
   const idxData = header.indexOf("DT_COMPTC");
   const idxQuota = header.indexOf("VL_QUOTA");
