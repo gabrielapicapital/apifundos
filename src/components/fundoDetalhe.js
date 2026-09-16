@@ -393,24 +393,17 @@ function carregarIndices(historico) {
 
 // ---- Aba 4: Carteira -------------------------------------------------------
 // Fonte: dataset CDA da CVM (Composição e Diversificação das Aplicações),
-// sincronizado por api/sincronizar-composicao.js — ver adendo "estrutura-
-// dados-completa", seção 6. ETFs não entram (não têm CNPJ nesse dataset).
+// sincronizado por api/sincronizar-cadastro.js — ver adendo "estrutura-
+// dados-completa", seção 6. Cobre fundos comuns (por bloco de ativo) e
+// também ETFs/FIDC/FIAGRO (arquivo cda_fie, categoria por linha) — ver
+// api/_lib/cda.js. Cor é por posição na lista (ordenada por valor), não por
+// categoria fixa, já que o conjunto de categorias muda por tipo de fundo.
+const PALETA_CARTEIRA = ["#0D2A54", "#2F6FA8", "#5FA3D0", "#AA7D41", "#C9A26A", "#1E7A4C", "#7A5FB0", "#8A97A6", "#B7472A", "#4A5A6A"];
 
-const CORES_BLOCO = {
-  1: "#0D2A54",
-  2: "#2F6FA8",
-  3: "#5FA3D0",
-  4: "#AA7D41",
-  5: "#C9A26A",
-  6: "#1E7A4C",
-  7: "#7A5FB0",
-  8: "#8A97A6",
-};
-
-function linhaCarteiraHtml(b) {
+function linhaCarteiraHtml(b, i) {
   return `
     <tr>
-      <td><span class="carteira-dot" style="color:${CORES_BLOCO[b.bloco]}">●</span>${b.nome}</td>
+      <td><span class="carteira-dot" style="color:${PALETA_CARTEIRA[i % PALETA_CARTEIRA.length]}">●</span>${b.nome}</td>
       <td class="num">${fmtBRL(b.valor)}</td>
       <td class="num">${b.percentual.toFixed(1).replace(".", ",")}%</td>
     </tr>`;
@@ -421,7 +414,7 @@ function renderAbaCarteira(composicao) {
     return `
       <div class="card">
         <h3>Composição da carteira</h3>
-        <p class="pending">Ainda não disponível pra esse fundo — a composição vem do dataset CDA da CVM, sincronizado numa rotina separada (ver "Editar dados do fundo"). ETFs não têm esse dado (replicam um índice, não uma carteira discricionária).</p>
+        <p class="pending">Ainda não disponível pra esse fundo — a composição vem do dataset CDA da CVM, sincronizado numa rotina separada (ver "Editar dados do fundo").</p>
       </div>
     `;
   }
@@ -454,7 +447,7 @@ function carregarCarteira(composicao) {
     type: "doughnut",
     data: {
       labels: dados.map((b) => b.nome),
-      datasets: [{ data: dados.map((b) => b.percentual), backgroundColor: dados.map((b) => CORES_BLOCO[b.bloco]), borderWidth: 0 }],
+      datasets: [{ data: dados.map((b) => b.percentual), backgroundColor: dados.map((_, i) => PALETA_CARTEIRA[i % PALETA_CARTEIRA.length]), borderWidth: 0 }],
     },
     options: {
       responsive: true,
