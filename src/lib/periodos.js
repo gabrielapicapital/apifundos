@@ -38,9 +38,9 @@ export function calcularPeriodos(fundoPontosBrutos, benchPontosBrutos, benchmark
   if (fundoSerieBruta.length < 2 || benchSerieBruta.length < 2) return null;
 
   // O fundo pode ter um ponto "solto" bem mais antigo que o resto da série —
-  // o preço de entrada gravado na hora que o fundo foi cadastrado, de antes
-  // do backfill retroativo existir (que é limitado a ~13 meses pra trás).
-  // Sem cortar isso, o gráfico liga esse ponto isolado ao próximo dado real
+  // o preço de entrada gravado na hora que o fundo foi cadastrado, antes de
+  // um backfill retroativo ter rodado (ou um trecho que a fonte de dado não
+  // cobre). Sem cortar isso, o gráfico liga esse ponto isolado ao próximo dado real
   // como se fossem vizinhos (ignorando o buraco de meses no meio) e compara
   // contra um benchmark que só tem histórico a partir de uma data bem mais
   // recente — resultando numa comparação artificialmente distorcida. Corta

@@ -17,18 +17,20 @@ export const BENCHMARK_POR_CATEGORIA = {
 
 export const TICKER_BENCHMARK = { CDI: null, Ibovespa: "^BVSP", "S&P 500": "^GSPC" };
 
-// Profundidade máxima do backfill: os últimos 13 meses (ver adendo
-// "rentabilidade-periodo-benchmark", seção 3 — cobre a janela de 12 meses +
-// folga). Fundo adicionado há mais tempo que isso começa o gráfico nesse
-// ponto, não na data de entrada real; ainda assim é dado 100% real, só que
-// truncado — bem diferente do "exemplo ilustrativo" anterior.
-export const PROFUNDIDADE_MESES = 13;
+// O gráfico deve acompanhar desde a data real de compra até hoje, sem
+// truncar — não faz sentido comparar contra um benchmark cujo início é só
+// "os últimos N meses" (isso já causou um caso confuso: rentabilidade total
+// positiva desde a entrada, mas o gráfico, cortado, mostrando queda desde um
+// pico recente). O único limite que resta é um teto de segurança bem
+// folgado, só pra não sair baixando décadas de arquivo por causa de um erro
+// de digitação na data de adição.
+const TETO_SEGURANCA_MESES = 120; // 10 anos
 const LOTE = 300; // linhas por transação — reduz de "1 round-trip por linha" pra "1 a cada 300"
 
 export function limitarInicio(dataAdicaoISO, hojeISO) {
   const hoje = new Date(hojeISO);
   const limite = new Date(hoje);
-  limite.setMonth(limite.getMonth() - PROFUNDIDADE_MESES);
+  limite.setMonth(limite.getMonth() - TETO_SEGURANCA_MESES);
   const entrada = new Date(dataAdicaoISO);
   return entrada > limite ? dataAdicaoISO : limite.toISOString().slice(0, 10);
 }
