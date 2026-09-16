@@ -2,6 +2,10 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<!-- Necessário pra resolver os caminhos relativos abaixo (css, js, ícones) de
+     forma correta mesmo quando a página é carregada direto numa rota de fundo
+     (/fundos/{id}, ver src/router.js) e não em "/" -->
+<base href="/">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>API Capital · Fundos Indicados</title>
 <meta name="description" content="Acompanhamento dos fundos indicados aos consultores da API Capital Investimentos.">
