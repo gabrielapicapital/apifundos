@@ -108,6 +108,7 @@ export async function updateFundo(id, patch) {
   const atualizado = await adminFetch(`/api/fundos/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
   state = { ...state, fundos: recompute(state.fundos.map((f) => (f.id === id ? atualizado : f))) };
   notify();
+  return atualizado;
 }
 
 export async function updateDiagnostico(id, texto) {

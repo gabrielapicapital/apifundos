@@ -1,4 +1,4 @@
-import { updateFundo } from "../state/store.js";
+import { updateFundo, backfillFundo } from "../state/store.js";
 import { toISODate } from "../lib/format.js";
 
 const modal = () => document.getElementById("editFundModal");
@@ -53,8 +53,13 @@ export function init() {
     const confirmBtn = document.getElementById("confirmEditFundBtn");
     confirmBtn.disabled = true;
     try {
-      await updateFundo(id, patch);
+      const atualizado = await updateFundo(id, patch);
       modal().classList.add("hidden");
+      // Data de compra ou CNPJ/ticker mudaram: o servidor já buscou a cota
+      // da nova data sozinho (ver api/fundos/[id].js), mas o histórico
+      // completo pro gráfico/índices só vem buscando de novo desde essa
+      // data até hoje — mesma chamada disparada ao adicionar um fundo novo.
+      if (atualizado.precisaBackfill) backfillFundo(id);
     } catch (err) {
       errBox.textContent = `Não foi possível salvar: ${err.message}`;
       errBox.style.display = "block";
