@@ -4,11 +4,40 @@ import { calcularRentabilidade } from "../data/normalize.js";
 // (funções da Vercel + Postgres, ver pasta api/) em vez de localStorage.
 // Dados de fundo passam a ser compartilhados entre todos os consultores.
 
+// O e-mail de admin (e o modo administrador) só vivia na memória da página —
+// qualquer recarregamento (ex: o próprio service worker se atualizando
+// sozinho depois de um novo deploy, ver service-worker.js) derrubava o
+// administrador sem nenhum aviso, parecendo que o botão de editar tinha
+// sumido. Persistir no localStorage não piora a segurança (que já é só uma
+// allowlist conferida no servidor, ver TODO em config.js) — só evita esse
+// logout silencioso.
+const ADMIN_EMAIL_STORAGE_KEY = "apiCapitalAdminEmail";
+
+function lerAdminEmailSalvo() {
+  try {
+    return localStorage.getItem(ADMIN_EMAIL_STORAGE_KEY) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function salvarAdminEmail(email) {
+  try {
+    if (email) localStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, email);
+    else localStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
+  } catch (e) {
+    // localStorage bloqueado (navegação privada, storage desabilitado etc.)
+    // — segue funcionando, só sem persistir entre recarregamentos.
+  }
+}
+
+const adminEmailSalvo = lerAdminEmailSalvo();
+
 let state = {
   fundos: [],
   loaded: false,
   loadError: null,
-  adminEmail: null, // e-mail "autenticado" (ver TODO em config.js) — enviado
+  adminEmail: adminEmailSalvo, // e-mail "autenticado" (ver TODO em config.js) — enviado
   // como header x-admin-email nas chamadas que exigem admin; o servidor
   // confere contra ADMIN_EMAILS (ver api/_lib/auth.js).
   filtro: {
@@ -17,7 +46,7 @@ let state = {
     busca: "",
     ordenacao: "ret-desc",
   },
-  editMode: false,
+  editMode: Boolean(adminEmailSalvo),
 };
 
 const listeners = new Set();
@@ -68,11 +97,14 @@ export function setFiltro(patch) {
 }
 
 export function setEditMode(on) {
-  state = { ...state, editMode: on, adminEmail: on ? state.adminEmail : null };
+  const adminEmail = on ? state.adminEmail : null;
+  salvarAdminEmail(adminEmail);
+  state = { ...state, editMode: on, adminEmail };
   notify();
 }
 
 export function setAdminEmail(email) {
+  salvarAdminEmail(email);
   state = { ...state, adminEmail: email };
 }
 
