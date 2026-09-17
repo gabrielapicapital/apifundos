@@ -3,7 +3,7 @@ import { voltarParaLista } from "../router.js";
 import { fmtBRL, fmtPct, fmtDateBR, fmtNumber } from "../lib/format.js";
 import { BENCHMARK_POR_CATEGORIA, calcularPeriodos } from "../lib/periodos.js";
 import { calcularRentabilidadeMensalAnual, calcularIndicesRisco, calcularDrawdown, calcularVolatilidadeSerie } from "../lib/indices.js";
-import { ICON_TRIANGLE_ALERT } from "../lib/icons.js";
+import { ICON_TRIANGLE_ALERT, ICON_PENCIL } from "../lib/icons.js";
 import * as editFundModal from "./editFundModal.js";
 
 const BENCHMARKS_DISPONIVEIS = ["CDI", "Ibovespa", "S&P 500", "IPCA"];
@@ -45,7 +45,7 @@ function renderShell(fundo, cadastro) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path></svg>
         <span>Voltar para a lista</span>
       </button>
-      ${editMode ? `<button class="back-link" id="editarFundoBtn" style="margin-left:auto;">Editar dados do fundo</button>` : ""}
+      ${editMode ? `<button class="api-botao-utilidade-cheio icon-btn" id="editarFundoBtn" style="margin-left:auto;">${ICON_PENCIL}<span>Editar dados do fundo</span></button>` : ""}
     </div>
 
     <div class="detalhe-page">

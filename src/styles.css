@@ -53,7 +53,7 @@ body{
 }
 
 /* ---- Dica de instalação (iOS) ---- */
-.install-hint{max-width:1180px;margin:var(--api-x4) auto 0;padding:12px var(--api-x4);background:var(--api-fundo);border-radius:var(--api-canto);color:var(--api-texto);font-size:var(--api-corpo-pequeno-font-size);display:none;align-items:center;gap:10px;}
+.install-hint{max-width:1520px;margin:var(--api-x4) auto 0;padding:12px var(--api-x4);background:var(--api-fundo);border-radius:var(--api-canto);color:var(--api-texto);font-size:var(--api-corpo-pequeno-font-size);display:none;align-items:center;gap:10px;}
 .install-hint.visible{display:flex;}
 .install-hint svg{width:20px;height:20px;flex-shrink:0;color:var(--api-azul);}
 .install-hint button{border:none;background:none;color:var(--api-acao);font-weight:600;cursor:pointer;font-size:inherit;padding:0;}
@@ -92,7 +92,7 @@ body{
 }
 
 /* ---- Faixa de modo administrador ---- */
-.edit-banner{max-width:1180px;margin:var(--api-x4) auto 0;padding:var(--api-x4) var(--api-x6);background:var(--api-fundo-quente);border-radius:var(--api-canto);color:var(--api-azul);font-size:var(--api-corpo-pequeno-font-size);display:flex;justify-content:space-between;align-items:center;gap:var(--api-x4);flex-wrap:wrap;}
+.edit-banner{max-width:none;margin:var(--api-x4) 0 0;padding:var(--api-x4) var(--api-x6);background:var(--api-fundo-quente);border-radius:var(--api-canto);color:var(--api-azul);font-size:var(--api-corpo-pequeno-font-size);display:flex;justify-content:space-between;align-items:center;gap:var(--api-x4);flex-wrap:wrap;}
 
 /* ---- Botões de utilidade (todo botão em ferramenta é de utilidade) ---- */
 .api-botao-utilidade, .api-botao-utilidade-cheio{cursor:pointer;border-style:solid;white-space:nowrap;}
@@ -152,11 +152,11 @@ body{
 .checkbox-row input{width:16px;height:16px;accent-color:var(--api-selecao);flex-shrink:0;}
 
 /* ---- Aviso de pendências ---- */
-.banner{max-width:1180px;margin:var(--api-x4) auto 0;padding:var(--api-x4) var(--api-x6);background:var(--api-fundo-quente);border-radius:var(--api-canto);color:var(--api-azul);font-size:var(--api-corpo-pequeno-font-size);display:flex;gap:10px;align-items:flex-start;}
+.banner{max-width:none;margin:var(--api-x4) 0 0;padding:var(--api-x4) var(--api-x6);background:var(--api-fundo-quente);border-radius:var(--api-canto);color:var(--api-azul);font-size:var(--api-corpo-pequeno-font-size);display:flex;gap:10px;align-items:flex-start;}
 .banner-icon svg{width:20px;height:20px;flex-shrink:0;}
 .banner strong{color:var(--api-azul);}
 
-.content{max-width:1180px;margin:0 auto;padding:var(--api-x4) var(--api-x6) 60px;}
+.content{max-width:none;margin:0;padding:var(--api-x4) var(--api-x6) 60px;}
 .count{font-size:var(--api-corpo-pequeno-font-size);color:var(--api-texto-fraco);margin:6px 2px var(--api-x4);}
 
 /* ---- Cartões de resumo (dado de dashboard) ---- */
@@ -278,11 +278,11 @@ tbody tr:hover .expand-chevron svg{color:var(--api-azul);}
 .cdp-today-link{background:none;border:none;color:var(--api-azul);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;}
 .cdp-today-link:hover{text-decoration:underline;}
 
-.footer-note{max-width:1180px;margin:22px auto 0;padding:0 var(--api-x6);font-size:12.5px;color:var(--api-texto-fraco);line-height:1.6;}
+.footer-note{max-width:none;margin:22px 0 0;padding:0 var(--api-x6);font-size:12.5px;color:var(--api-texto-fraco);line-height:1.6;}
 
 /* ---- Rodapé / contato ---- */
 .contact-band{background:var(--api-fundo-escuro);color:var(--api-sobre-escuro);padding:var(--api-x10) var(--api-x6);margin-top:var(--api-x10);}
-.contact-inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+.contact-inner{max-width:1520px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;}
 .contact-text h2{
   font-family:var(--api-titulo-pagina-font-family);
   font-weight:400;
@@ -308,6 +308,7 @@ tbody tr:hover .expand-chevron svg{color:var(--api-azul);}
 /* ---- Página de detalhe do fundo (rota /fundos/:id, ver src/router.js e
    src/components/fundoDetalhe.js) ---- */
 .topbar{max-width:1520px;margin:0 auto;padding:var(--api-x4) var(--api-x6) 0;display:flex;align-items:center;}
+#editarFundoBtn svg{width:16px;height:16px;flex-shrink:0;}
 .topbar-brand-text{font-size:var(--api-corpo-pequeno-font-size);color:var(--api-texto-fraco);}
 .back-link{display:inline-flex;align-items:center;gap:8px;background:none;border:none;padding:6px 2px;color:var(--api-acao);font-family:inherit;font-size:var(--api-corpo-pequeno-font-size);font-weight:600;cursor:pointer;}
 .back-link svg{flex-shrink:0;}
