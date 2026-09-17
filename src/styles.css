@@ -307,13 +307,13 @@ tbody tr:hover .expand-chevron svg{color:var(--api-azul);}
 
 /* ---- Página de detalhe do fundo (rota /fundos/:id, ver src/router.js e
    src/components/fundoDetalhe.js) ---- */
-.topbar{max-width:1520px;margin:0 auto;padding:var(--api-x4) var(--api-x6) 0;display:flex;align-items:center;}
+.topbar{max-width:none;padding:var(--api-x4) var(--api-x6) 0;display:flex;align-items:center;}
 #editarFundoBtn svg{width:16px;height:16px;flex-shrink:0;}
 .topbar-brand-text{font-size:var(--api-corpo-pequeno-font-size);color:var(--api-texto-fraco);}
 .back-link{display:inline-flex;align-items:center;gap:8px;background:none;border:none;padding:6px 2px;color:var(--api-acao);font-family:inherit;font-size:var(--api-corpo-pequeno-font-size);font-weight:600;cursor:pointer;}
 .back-link svg{flex-shrink:0;}
 
-.detalhe-page{max-width:1520px;margin:0 auto;padding:var(--api-x4) var(--api-x6) 60px;display:flex;flex-direction:column;gap:var(--api-x4);}
+.detalhe-page{max-width:none;padding:var(--api-x4) var(--api-x6) 60px;display:flex;flex-direction:column;gap:var(--api-x4);}
 
 .fund-header{background:var(--api-fundo);border-radius:var(--api-canto);padding:var(--api-x6);}
 .fund-header-top{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--api-x6);flex-wrap:wrap;}
