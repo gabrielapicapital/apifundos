@@ -56,17 +56,16 @@ function scopeToggleHtml(fundo, aba, subtitulo) {
   const temData = fundoTemDataCompra(fundo);
   return `
     <div class="card" style="padding-bottom:16px;">
-      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:16px;">
-        <div style="flex:0 0 auto;">
+      <div class="scope-toggle-row">
+        <div class="scope-toggle-row-title">
           <h3 style="margin-bottom:2px;">Período de exibição</h3>
           <p class="sub" style="margin:0;">${subtitulo}</p>
         </div>
-        <div style="flex:1;display:flex;justify-content:center;min-width:220px;">
-          <div class="scope-toggle scope-toggle-lg" data-scope-toggle="${aba}">
-            <button type="button" data-scope="criacao" class="${escopo === "criacao" || !temData ? "active" : ""}">Desde a criação do fundo</button>
-            <button type="button" data-scope="compra" class="${escopo === "compra" && temData ? "active" : ""}" ${temData ? "" : 'disabled title="Não disponível: fundo sem data de compra registrada"'}>Desde a compra da cota</button>
-          </div>
+        <div class="scope-toggle scope-toggle-lg" data-scope-toggle="${aba}">
+          <button type="button" data-scope="criacao" class="${escopo === "criacao" || !temData ? "active" : ""}">Desde a criação do fundo</button>
+          <button type="button" data-scope="compra" class="${escopo === "compra" && temData ? "active" : ""}" ${temData ? "" : 'disabled title="Não disponível: fundo sem data de compra registrada"'}>Desde a compra da cota</button>
         </div>
+        <div></div>
       </div>
       ${
         temData
