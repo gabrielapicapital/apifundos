@@ -1,4 +1,5 @@
 import { calcularRentabilidade } from "../data/normalize.js";
+import { GRUPOS_RISCO_ORDEM, SEM_GRUPO } from "../lib/gruposRisco.js";
 
 // Store simples (estado + pub/sub), agora falando com o backend real
 // (funções da Vercel + Postgres, ver pasta api/) em vez de localStorage.
@@ -45,6 +46,10 @@ let state = {
     categoria: "Todos",
     busca: "",
     ordenacao: "ret-desc",
+    // Adendo "grupos-de-risco": "Por grupo de risco" é o padrão ao abrir o
+    // app (substitui o ranking como visão inicial, seção 3 do adendo).
+    modoVisualizacao: "grupo", // "grupo" | "ranking"
+    gruposVisiveis: new Set(GRUPOS_RISCO_ORDEM), // todos marcados por padrão
   },
   editMode: Boolean(adminEmailSalvo),
 };
@@ -195,6 +200,20 @@ export async function buscarCadastro(id) {
   }
 }
 
+// Sugestão de grupo de risco por CNPJ (adendo "grupos-de-risco", seção 5) —
+// leitura pública e rápida (não passa pela CVM), disparada na perda de
+// foco do campo CNPJ em "Adicionar fundo"/"Editar dados do fundo". null
+// quando o CNPJ não é de 14 dígitos ou não está na tabela.
+export async function buscarGrupoPorCnpj(cnpjOuTicker) {
+  try {
+    const resultado = await adminFetch(`/api/fundos?grupoPorCnpj=${encodeURIComponent(cnpjOuTicker)}`, { method: "GET" });
+    return resultado.grupoRisco;
+  } catch (e) {
+    console.error("Falha ao buscar grupo de risco por CNPJ:", e);
+    return null;
+  }
+}
+
 // Composição da carteira (dataset CDA da CVM) — null se ainda não foi
 // sincronizada pra esse fundo (ver api/sincronizar-composicao.js).
 export async function buscarComposicao(id) {
@@ -206,12 +225,15 @@ export async function buscarComposicao(id) {
   }
 }
 
-export function fundosFiltrados() {
-  const { tipo, categoria, busca, ordenacao } = state.filtro;
+// Filtros em comum entre os dois modos de visualização (tipo/categoria/
+// busca) — NÃO inclui grupo de risco nem ordenação, que cada modo trata do
+// seu jeito (ver fundosFiltrados/fundosAgrupados abaixo).
+function fundosNaBaseFiltrada() {
+  const { tipo, categoria, busca } = state.filtro;
   const termo = busca.trim().toLowerCase();
   const termoDigits = termo.replace(/\D/g, "");
 
-  let lista = state.fundos.filter((f) => {
+  return state.fundos.filter((f) => {
     if (tipo !== "Todos" && f.tipo !== tipo) return false;
     if (categoria !== "Todos" && f.categoria !== categoria) return false;
     if (termo) {
@@ -221,13 +243,21 @@ export function fundosFiltrados() {
     }
     return true;
   });
+}
 
-  const rank = (f) => (f.pendenteCorrecao ? null : f.rentabilidadePct);
+const rankRentabilidade = (f) => (f.pendenteCorrecao ? null : f.rentabilidadePct);
+
+// Modo "Ranking por rentabilidade" — lista única, ordenada por
+// state.filtro.ordenacao (comportamento de sempre, anterior ao adendo
+// "grupos-de-risco").
+export function fundosFiltrados() {
+  const { ordenacao } = state.filtro;
+  let lista = fundosNaBaseFiltrada();
 
   if (ordenacao === "ret-desc") {
-    lista = lista.sort((a, b) => (rank(b) ?? -Infinity) - (rank(a) ?? -Infinity));
+    lista = lista.sort((a, b) => (rankRentabilidade(b) ?? -Infinity) - (rankRentabilidade(a) ?? -Infinity));
   } else if (ordenacao === "ret-asc") {
-    lista = lista.sort((a, b) => (rank(a) ?? Infinity) - (rank(b) ?? Infinity));
+    lista = lista.sort((a, b) => (rankRentabilidade(a) ?? Infinity) - (rankRentabilidade(b) ?? Infinity));
   } else if (ordenacao === "name-asc") {
     lista = lista.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   } else if (ordenacao === "cat-asc") {
@@ -235,4 +265,33 @@ export function fundosFiltrados() {
   }
 
   return lista;
+}
+
+// Modo "Por grupo de risco" (adendo "grupos-de-risco", seções 3 e 4) — uma
+// seção por grupo, na ordem oficial (mais seguro primeiro), só os grupos
+// marcados como visíveis, cada um ordenado por rentabilidade desc por
+// dentro, e omitindo grupo sem nenhum fundo na seleção atual. Devolve
+// {grupo, fundos}[] — não uma lista achatada, pra table.js desenhar o
+// cabeçalho de cada seção.
+export function fundosAgrupados() {
+  const { gruposVisiveis } = state.filtro;
+  const base = fundosNaBaseFiltrada();
+
+  return GRUPOS_RISCO_ORDEM.filter((grupo) => gruposVisiveis.has(grupo))
+    .map((grupo) => ({
+      grupo,
+      fundos: base
+        .filter((f) => (f.grupoRisco || SEM_GRUPO) === grupo)
+        .sort((a, b) => (rankRentabilidade(b) ?? -Infinity) - (rankRentabilidade(a) ?? -Infinity)),
+    }))
+    .filter((secao) => secao.fundos.length > 0);
+}
+
+// Achatada, só pros cartões de resumo/comparador no modo "grupo" (mesma
+// base filtrada + só os grupos visíveis, sem quebrar em seções) — seção 4
+// do adendo: "os cartões de resumo devem refletir só os grupos marcados
+// como visíveis".
+export function fundosNosGruposVisiveis() {
+  const { gruposVisiveis } = state.filtro;
+  return fundosNaBaseFiltrada().filter((f) => gruposVisiveis.has(f.grupoRisco || SEM_GRUPO));
 }

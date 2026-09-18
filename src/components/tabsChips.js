@@ -34,7 +34,10 @@ export function render(state) {
   document.querySelectorAll(".type-tab").forEach((el) => {
     el.classList.toggle("active", el.dataset.tipo === state.filtro.tipo);
   });
-  document.querySelectorAll(".chip").forEach((el) => {
+  // Escopado a #chipRow: .chip também é usado (mesmo visual) pelo toggle de
+  // modo de visualização (ver riskGroupControls.js) — sem o escopo, esse
+  // toggle perderia o "active" a cada render (dataset.cat dele é undefined).
+  document.querySelectorAll("#chipRow .chip").forEach((el) => {
     el.classList.toggle("active", el.dataset.cat === state.filtro.categoria);
   });
 }

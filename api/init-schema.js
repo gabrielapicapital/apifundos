@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "./_lib/db.js";
 import { requireAdmin } from "./_lib/auth.js";
+import { BACKFILL_POR_NOME, CNPJ_PARA_GRUPO } from "./_lib/gruposRiscoSeed.js";
 
 // Rota de uso único (ou repetível sem risco: tudo "IF NOT EXISTS"). Cria as
 // tabelas do zero. Protegida por e-mail de administrador.
@@ -89,6 +90,43 @@ export default async function handler(req, res) {
     if (f.diagnostico_historico.every((e) => e.id)) continue;
     const comId = f.diagnostico_historico.map((e) => (e.id ? e : { ...e, id: randomUUID() }));
     await sql`UPDATE fundos SET diagnostico_historico = ${JSON.stringify(comId)} WHERE id = ${f.id}`;
+  }
+
+  // Grupo de risco (adendo "grupos-de-risco", baseado na planilha original
+  // "Fundos Recomendados") — campo adicional, coexiste com a categoria
+  // ampla já existente (categoria). "Sem grupo" é o padrão pra fundo que
+  // não se encaixa em nenhum dos 20 grupos da seção 1 do adendo.
+  await sql`ALTER TABLE fundos ADD COLUMN IF NOT EXISTS grupo_risco TEXT NOT NULL DEFAULT 'Sem grupo'`;
+
+  // Backfill dos 84 fundos já cadastrados (por nome, cruzado manualmente
+  // contra a planilha — ver api/_lib/gruposRiscoSeed.js). Só toca fundo
+  // ainda no padrão "Sem grupo", pra não sobrescrever uma correção manual
+  // feita por um admin entre uma rodada dessa migração e outra.
+  for (const { nome, grupo } of BACKFILL_POR_NOME) {
+    await sql`UPDATE fundos SET grupo_risco = ${grupo} WHERE nome = ${nome} AND grupo_risco = 'Sem grupo'`;
+  }
+
+  // Tabela CNPJ -> grupo de risco (seção 5 do adendo): usada pra sugerir o
+  // grupo automaticamente ao digitar um CNPJ conhecido em "Adicionar
+  // fundo"/"Editar dados do fundo" (ver api/fundos.js, api/fundos/[id].js).
+  // Fica no banco (não fixa no código) de propósito — o adendo pede que dê
+  // pra manter sem precisar de deploy; qualquer admin que classificar um
+  // fundo manualmente por um CNPJ conhecido "ensina" essa tabela pro
+  // próximo fundo com o mesmo CNPJ (ver PATCH/POST em api/fundos*.js).
+  await sql`
+    CREATE TABLE IF NOT EXISTS cnpj_grupo_risco (
+      cnpj_digits TEXT PRIMARY KEY,
+      grupo_risco TEXT NOT NULL,
+      atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+  // Semeia com a tabela extraída da planilha — ON CONFLICT DO NOTHING pra
+  // nunca sobrescrever uma entrada que um admin já corrigiu manualmente.
+  for (const [cnpjDigits, grupo] of Object.entries(CNPJ_PARA_GRUPO)) {
+    await sql`
+      INSERT INTO cnpj_grupo_risco (cnpj_digits, grupo_risco) VALUES (${cnpjDigits}, ${grupo})
+      ON CONFLICT (cnpj_digits) DO NOTHING
+    `;
   }
 
   // Série histórica dos benchmarks (CDI, Ibovespa, S&P 500, IPCA) — "valor"

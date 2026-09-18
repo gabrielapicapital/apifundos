@@ -45,6 +45,21 @@
 
       <div class="sidebar-center">
         <div class="sidebar-section">
+          <div class="sidebar-label">Modo de visualização</div>
+          <div class="chips" id="viewModeToggle">
+            <button type="button" data-mode="grupo" class="view-mode-btn">Por grupo de risco</button>
+            <button type="button" data-mode="ranking" class="view-mode-btn">Ranking por rentabilidade</button>
+          </div>
+        </div>
+        <div class="sidebar-section" id="groupFilterSection" style="position:relative;">
+          <div class="sidebar-label">Grupos visíveis</div>
+          <button type="button" id="groupFilterBtn" class="api-botao-utilidade" style="width:100%;justify-content:space-between;display:flex;align-items:center;">
+            <span id="groupFilterBtnLabel">Todos os grupos</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div id="groupFilterPanel" class="custom-date-panel hidden" style="width:280px;max-height:360px;overflow-y:auto;"></div>
+        </div>
+        <div class="sidebar-section" id="sortSection">
           <div class="sidebar-label">Ordenar por</div>
           <div class="sort-wrap">
             <select id="sortSelect">
@@ -89,8 +104,6 @@
         <div class="banner" id="banner"></div>
 
         <div class="summary-cards" id="summaryCards"></div>
-
-        <div class="comparator" id="comparator"></div>
 
         <div class="count" id="countLabel"></div>
         <table>
@@ -165,6 +178,33 @@
         <button class="api-botao-utilidade" id="lookupCnpjBtn" style="flex:0 0 auto;">Buscar</button>
       </div>
       <p class="modal-error" id="cnpjStatus" style="display:none;color:var(--api-texto-fraco);"></p>
+
+      <label>Grupo de risco</label>
+      <select id="newFundGrupo">
+        <option value="">Detectar pelo CNPJ (ou deixar sem grupo)</option>
+        <option>RF - CDI LIQ DIÁRIA</option>
+        <option>RF - SELIC LIQ DIÁRIA</option>
+        <option>RF - CDI BANCÁRIOS</option>
+        <option>RF - CDI HIGH GRADE</option>
+        <option>RF - HIGH GRADE ISENTO CDI</option>
+        <option>RF - HIGH GRADE</option>
+        <option>RF - PRE ISENTO</option>
+        <option>RF - PRE</option>
+        <option>RF - IPCA+ ISENTO</option>
+        <option>RF - IPCA+</option>
+        <option>RF - EXTERIOR</option>
+        <option>ALTERNATIVOS - FIDCS S/ COME COTAS</option>
+        <option>MULTIMERCADO MACRO</option>
+        <option>AÇÕES BR - LONG/SHORT</option>
+        <option>AÇÕES BR - LONG ONLY</option>
+        <option>AÇÕES BR - LONG BIASED</option>
+        <option>AÇÕES BR - SMALL CAPS</option>
+        <option>AÇÕES EUA</option>
+        <option>ALTERNATIVOS</option>
+        <option>CRIPTOMOEDAS</option>
+        <option>Sem grupo</option>
+      </select>
+      <p class="grupo-suggestion" id="newFundGrupoSuggestion"></p>
 
       <label>Nome do fundo</label>
       <input type="text" id="newFundName" placeholder="Ex: Sparta Max Advisory FIC FIM">
@@ -262,6 +302,33 @@
 
       <label>CNPJ ou ticker</label>
       <input type="text" id="editFundCnpj" placeholder="Ex: 12.345.678/0001-90 ou NASD11">
+
+      <label>Grupo de risco</label>
+      <select id="editFundGrupo">
+        <option value="">Detectar pelo CNPJ (ou deixar sem grupo)</option>
+        <option>RF - CDI LIQ DIÁRIA</option>
+        <option>RF - SELIC LIQ DIÁRIA</option>
+        <option>RF - CDI BANCÁRIOS</option>
+        <option>RF - CDI HIGH GRADE</option>
+        <option>RF - HIGH GRADE ISENTO CDI</option>
+        <option>RF - HIGH GRADE</option>
+        <option>RF - PRE ISENTO</option>
+        <option>RF - PRE</option>
+        <option>RF - IPCA+ ISENTO</option>
+        <option>RF - IPCA+</option>
+        <option>RF - EXTERIOR</option>
+        <option>ALTERNATIVOS - FIDCS S/ COME COTAS</option>
+        <option>MULTIMERCADO MACRO</option>
+        <option>AÇÕES BR - LONG/SHORT</option>
+        <option>AÇÕES BR - LONG ONLY</option>
+        <option>AÇÕES BR - LONG BIASED</option>
+        <option>AÇÕES BR - SMALL CAPS</option>
+        <option>AÇÕES EUA</option>
+        <option>ALTERNATIVOS</option>
+        <option>CRIPTOMOEDAS</option>
+        <option>Sem grupo</option>
+      </select>
+      <p class="grupo-suggestion" id="editFundGrupoSuggestion"></p>
 
       <label>CNPJ na CVM (só pra ETFs — o campo acima já é o ticker)</label>
       <input type="text" id="editFundCnpjCvm" placeholder="Ex: 19.909.560/0001-91">

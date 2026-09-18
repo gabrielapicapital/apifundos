@@ -1,4 +1,4 @@
-// Cálculos derivados da lista filtrada atual (cartões de resumo + comparador).
+// Cálculos derivados da lista filtrada atual (cartões de resumo).
 // Espelha exatamente a lógica validada no protótipo (seção 5 da especificação).
 
 export function resumo(lista) {
@@ -11,13 +11,4 @@ export function resumo(lista) {
     : null;
 
   return { total: lista.length, rentabilidadeMedia, positivos, negativos, pendentes, validos };
-}
-
-export function comparador(validos, n = 5) {
-  const ranked = [...validos].sort((a, b) => b.rentabilidadePct - a.rentabilidadePct);
-  return {
-    melhores: ranked.slice(0, n),
-    piores: ranked.slice(-n).reverse(),
-    maxAbs: Math.max(1, ...validos.map((f) => Math.abs(f.rentabilidadePct))),
-  };
 }

@@ -5,6 +5,8 @@ import { buscarCotaPorCnpjData, buscarPrimeiraCotaAposData, buscarCotaMaisRecent
 import { buscarCotaFidcPorData, buscarCotaFidcMaisRecente } from "../_lib/cvmFidc.js";
 import { buscarSerieYahoo, buscarCotacaoEtf } from "../_lib/mercado.js";
 import { nomeDoAdmin } from "../../src/lib/admins.js";
+import { SEM_GRUPO } from "../../src/lib/gruposRisco.js";
+import { aprenderGrupoPorCnpj } from "../_lib/gruposRiscoDb.js";
 
 // Busca a cota real (não inventada) mais próxima de uma data, pra um fundo
 // já existente que teve a data de compra ou o CNPJ/ticker alterados via
@@ -78,6 +80,7 @@ function rowParaFundo(r) {
     tipo: r.tipo,
     instituicao: r.instituicao,
     categoria: r.categoria,
+    grupoRisco: r.grupo_risco || SEM_GRUPO,
     cnpjOuTicker: r.cnpj_ou_ticker,
     cnpjCvm: r.cnpj_cvm,
     dataAdicao: r.data_adicao ? r.data_adicao.toISOString().slice(0, 10) : null,
@@ -100,6 +103,7 @@ const CAMPOS = {
   tipo: "tipo",
   instituicao: "instituicao",
   categoria: "categoria",
+  grupoRisco: "grupo_risco",
   cnpjOuTicker: "cnpj_ou_ticker",
   cnpjCvm: "cnpj_cvm",
   dataAdicao: "data_adicao",
@@ -208,6 +212,14 @@ export default async function handler(req, res) {
     const hojeISO = new Date().toISOString().slice(0, 10);
     const dataPrecoAtualFinal = precoAtualAuto?.data ?? (precoAtualEnviado != null ? hojeISO : atual.data_preco_atual);
 
+    // Grupo de risco (adendo "grupos-de-risco") — campo simples, a detecção
+    // por CNPJ acontece no cliente (sugestão inline ao sair do campo CNPJ);
+    // aqui só grava o valor final que o admin confirmou (manual ou aceito
+    // da sugestão) e, se for um grupo de verdade, "ensina" a tabela
+    // cnpj_grupo_risco pra próxima vez que esse CNPJ aparecer.
+    const grupoRiscoMudou = sets.includes("grupo_risco") && valores.grupo_risco !== atual.grupo_risco;
+    const grupoRiscoFinal = sets.includes("grupo_risco") ? valores.grupo_risco : atual.grupo_risco;
+
     // Diagnóstico do time de Asset (adendo "diagnostico-asset-e-admins" +
     // pedido de editar/remover registro): histórico com autoria, não um
     // campo que se sobrescreve. Três ações possíveis num PATCH, mutuamente
@@ -252,6 +264,7 @@ export default async function handler(req, res) {
         tipo = ${valores.tipo ?? atual.tipo},
         instituicao = ${valores.instituicao ?? atual.instituicao},
         categoria = ${valores.categoria ?? atual.categoria},
+        grupo_risco = ${grupoRiscoFinal},
         cnpj_ou_ticker = ${cnpjFinal},
         cnpj_cvm = ${sets.includes("cnpj_cvm") ? valores.cnpj_cvm : atual.cnpj_cvm},
         data_adicao = ${dataAdicaoFinal},
@@ -272,6 +285,10 @@ export default async function handler(req, res) {
         INSERT INTO historico_precos (fundo_id, data, preco) VALUES (${id}, ${dataAdicaoFinal}, ${precoEntradaFinal})
         ON CONFLICT (fundo_id, data) DO UPDATE SET preco = EXCLUDED.preco
       `;
+    }
+
+    if (grupoRiscoMudou) {
+      await aprenderGrupoPorCnpj(cnpjFinal, grupoRiscoFinal);
     }
 
     const resposta = rowParaFundo(rows[0]);

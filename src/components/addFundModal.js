@@ -1,6 +1,8 @@
 import { addFundo, backfillFundo } from "../state/store.js";
 import { fmtDateBR, fmtNumber } from "../lib/format.js";
 import { attachCalendar } from "./dateCalendar.js";
+import { ligarSugestaoGrupoPorCnpj, resetarSugestaoGrupo } from "./grupoRiscoSuggestion.js";
+import { SEM_GRUPO } from "../lib/gruposRisco.js";
 
 export function init() {
   const modal = document.getElementById("addFundModal");
@@ -20,12 +22,20 @@ export function init() {
       (id) => (document.getElementById(id).value = "")
     );
     document.getElementById("newFundInst").value = "Banco BTG Pactual";
+    document.getElementById("newFundGrupo").value = "";
+    resetarSugestaoGrupo("newFundGrupoSuggestion");
     calendar.setValueSilently(new Date().toISOString().slice(0, 10));
     calendar.close();
     document.getElementById("addFundError").style.display = "none";
     document.getElementById("cnpjStatus").style.display = "none";
     buscaJaIniciada = false;
     modal.classList.remove("hidden");
+  });
+
+  ligarSugestaoGrupoPorCnpj({
+    inputCnpjId: "newFundCnpj",
+    selectGrupoId: "newFundGrupo",
+    suggestionBoxId: "newFundGrupoSuggestion",
   });
 
   document.getElementById("cancelAddFundBtn").addEventListener("click", () => modal.classList.add("hidden"));
@@ -143,11 +153,13 @@ export function init() {
     confirmBtn.disabled = true;
     try {
       const cnpjOuTicker = document.getElementById("newFundCnpj").value.trim() || null;
+      const grupoRisco = document.getElementById("newFundGrupo").value || SEM_GRUPO;
       const novo = await addFundo({
         nome,
         instituicao,
         tipo,
         categoria,
+        grupoRisco,
         cnpjOuTicker,
         dataAdicao: dataVal,
         precoEntrada: cota,

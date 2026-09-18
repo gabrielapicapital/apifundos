@@ -62,8 +62,11 @@ body{
 .chips{display:flex;gap:var(--api-x2);flex-wrap:wrap;}
 
 /* Chip e aba de tipo consomem os botões de utilidade oficiais (outline
-   inativo, cheio ativo) — nenhuma cápsula, nenhum tom novo. */
-.chip, .type-tab{
+   inativo, cheio ativo) — nenhuma cápsula, nenhum tom novo. view-mode-btn
+   (toggle "Por grupo de risco"/"Ranking", ver riskGroupControls.js) usa o
+   mesmo visual, mas é uma classe separada — .chip já é usado, com seletor
+   solto (não escopado a #chipRow), pelas categorias em tabsChips.js. */
+.chip, .type-tab, .view-mode-btn{
   font-family:var(--api-botao-utilidade-font-family);
   font-size:var(--api-botao-utilidade-font-size);
   font-weight:var(--api-botao-utilidade-font-weight);
@@ -75,7 +78,7 @@ body{
   height:32px;
   cursor:pointer;
 }
-.chip.active, .type-tab.active{
+.chip.active, .type-tab.active, .view-mode-btn.active{
   background-color:var(--api-acao);
   color:var(--api-sobre-escuro);
   border-color:var(--api-acao);
@@ -174,23 +177,6 @@ body{
 .summary-card .value.neg{color:var(--api-erro);}
 .summary-card .value.atencao{color:var(--api-azul);}
 
-/* ---- Comparador de desempenho ---- */
-.comparator{display:grid;grid-template-columns:1fr 1fr;gap:var(--api-x4);margin-bottom:var(--api-x6);}
-.comparator-panel{min-width:0;background:var(--api-fundo);border-radius:var(--api-canto);padding:var(--api-x6);}
-.comparator-panel h4{margin:0 0 var(--api-x4);font-size:var(--api-corpo-pequeno-font-size);color:var(--api-texto-fraco);font-weight:500;}
-.comp-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:var(--api-corpo-pequeno-font-size);}
-.comp-name{flex:0 1 42%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--api-texto);}
-.comp-bar-track{flex:1;background:var(--api-fundo-bloco);border-radius:4px;height:8px;overflow:hidden;}
-.comp-bar-fill{height:100%;}
-.comp-bar-fill.pos{background:var(--api-ok);}
-.comp-bar-fill.neg{background:var(--api-erro);}
-.comp-value{flex:0 0 56px;text-align:right;font-family:var(--api-numero-font-family);font-weight:700;font-size:12.5px;font-feature-settings:"tnum";}
-.comp-empty{font-size:var(--api-corpo-pequeno-font-size);color:var(--api-texto-fraco);}
-
-@media (max-width:720px){
-  .comparator{grid-template-columns:1fr;}
-}
-
 /* ---- Tabela ---- */
 table{width:100%;border-collapse:collapse;background:var(--api-fundo);border-radius:var(--api-canto);overflow:hidden;}
 thead th{
@@ -222,6 +208,30 @@ tbody tr:hover .expand-chevron svg{color:var(--api-azul);}
 .ret-neg{color:var(--api-erro);font-weight:700;font-feature-settings:"tnum";}
 .flagbadge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--api-azul);background:var(--api-fundo-quente);padding:4px 10px;border-radius:var(--api-canto-ferramenta);}
 .flagbadge svg{width:14px;height:14px;flex-shrink:0;}
+
+/* Modo "Por grupo de risco" (adendo grupos-de-risco) — cabeçalho de seção
+   sólido, sem gradiente (mesmo tom em todos os grupos, só a ordem na tela
+   indica o risco). "Sem grupo" usa um tom neutro + ícone de alerta, pra
+   sinalizar que precisa de atenção de um administrador. */
+.group-header-row{background:var(--api-azul);color:var(--api-sobre-escuro);font-weight:700;font-size:13px;padding:11px var(--api-x4);letter-spacing:.3px;cursor:default;}
+.group-header-row.group-header-ungrouped{background:var(--api-texto-fraco);}
+.group-header-count{font-weight:500;opacity:.75;font-size:12px;margin-left:8px;}
+tbody tr.group-header-tr:hover{background:none;}
+
+.group-filter-actions{display:flex;gap:8px;margin-bottom:10px;}
+.group-filter-actions button{flex:1;background:none;border:1px solid var(--api-borda);border-radius:var(--api-canto-ferramenta);padding:6px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--api-texto);}
+.group-filter-actions button:hover{background:var(--api-fundo-bloco);}
+.group-filter-option{display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:13px;cursor:pointer;color:var(--api-texto);}
+.group-filter-option input{flex-shrink:0;}
+
+/* Sugestão de grupo de risco por CNPJ (adendo grupos-de-risco, seção 5) —
+   mesmo padrão visual amarelo de aviso já usado no resto do app (.banner). */
+.grupo-suggestion{margin-top:10px;padding:var(--api-x4);background:var(--api-fundo-quente);border-radius:var(--api-canto);color:var(--api-azul);font-size:var(--api-corpo-pequeno-font-size);display:none;}
+.grupo-suggestion.visible{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;}
+.grupo-suggestion-actions{display:flex;gap:8px;flex-shrink:0;margin-left:auto;}
+.grupo-suggestion-actions button{font-size:12px;padding:5px 10px;border-radius:var(--api-canto-ferramenta);cursor:pointer;font-family:inherit;}
+.grupo-suggestion-accept{background:var(--api-azul);color:var(--api-sobre-escuro);border:none;}
+.grupo-suggestion-dismiss{background:none;border:1px solid var(--api-borda);color:var(--api-azul);}
 .muted-cell{color:var(--api-texto-fraco);font-size:var(--api-corpo-pequeno-font-size);}
 
 /* ---- Painel de detalhes ---- */

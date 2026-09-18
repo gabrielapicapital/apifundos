@@ -1,8 +1,17 @@
 import { updateFundo, backfillFundo } from "../state/store.js";
 import { toISODate } from "../lib/format.js";
 import * as fundoDetalhe from "./fundoDetalhe.js";
+import { ligarSugestaoGrupoPorCnpj, resetarSugestaoGrupo } from "./grupoRiscoSuggestion.js";
+import { SEM_GRUPO } from "../lib/gruposRisco.js";
 
 const modal = () => document.getElementById("editFundModal");
+
+// CNPJ do fundo no momento em que o modal foi aberto — usado só pra saber
+// se o admin corrigiu o CNPJ nessa edição (ver listener de "input" em
+// init()), disparando a sugestão de grupo de novo mesmo com um grupo já
+// escolhido antes (adendo "grupos-de-risco", seção 5: "essa mesma lógica
+// de sugestão deve valer... se o CNPJ for corrigido depois").
+let cnpjAoAbrir = "";
 
 function syncPendenteFromEntry() {
   const entry = document.getElementById("editFundEntry").value;
@@ -17,6 +26,21 @@ export function init() {
   // manualmente e o fundo continuava aparecendo como pendente.
   document.getElementById("editFundEntry").addEventListener("input", syncPendenteFromEntry);
 
+  // Corrigir o CNPJ nessa edição volta o seletor de grupo pro estado "não
+  // escolhido", pra sugestão automática (ligada logo abaixo) poder disparar
+  // de novo — sem isso, o grupo já preenchido (o que o fundo já tinha)
+  // impediria a sugestão de aparecer mesmo com um CNPJ novo.
+  document.getElementById("editFundCnpj").addEventListener("input", () => {
+    const atual = document.getElementById("editFundCnpj").value.trim();
+    if (atual !== cnpjAoAbrir) document.getElementById("editFundGrupo").value = "";
+  });
+
+  ligarSugestaoGrupoPorCnpj({
+    inputCnpjId: "editFundCnpj",
+    selectGrupoId: "editFundGrupo",
+    suggestionBoxId: "editFundGrupoSuggestion",
+  });
+
   document.getElementById("confirmEditFundBtn").addEventListener("click", async () => {
     const id = modal().dataset.fundoId;
     const nome = document.getElementById("editFundName").value.trim();
@@ -24,6 +48,7 @@ export function init() {
     const tipo = document.getElementById("editFundTipo").value;
     const categoria = document.getElementById("editFundCat").value;
     const cnpjOuTicker = document.getElementById("editFundCnpj").value.trim() || null;
+    const grupoRisco = document.getElementById("editFundGrupo").value || SEM_GRUPO;
     const cnpjCvm = document.getElementById("editFundCnpjCvm").value.trim() || null;
     const dataAdicao = document.getElementById("editFundDate").value || null;
     const precoEntradaRaw = document.getElementById("editFundEntry").value;
@@ -45,7 +70,7 @@ export function init() {
     }
     errBox.style.display = "none";
 
-    const patch = { nome, instituicao, tipo, categoria, cnpjOuTicker, cnpjCvm, dataAdicao, precoEntrada, precoAtual, pendenteCorrecao };
+    const patch = { nome, instituicao, tipo, categoria, grupoRisco, cnpjOuTicker, cnpjCvm, dataAdicao, precoEntrada, precoAtual, pendenteCorrecao };
 
     // Recalcula a quantidade de cotas só quando o admin informa o valor
     // investido de verdade (ex: ao corrigir um fundo pendente com a cota real
@@ -84,6 +109,9 @@ export function open(fundo) {
   document.getElementById("editFundTipo").value = fundo.tipo;
   document.getElementById("editFundCat").value = fundo.categoria;
   document.getElementById("editFundCnpj").value = fundo.cnpjOuTicker || "";
+  cnpjAoAbrir = fundo.cnpjOuTicker || "";
+  document.getElementById("editFundGrupo").value = fundo.grupoRisco && fundo.grupoRisco !== SEM_GRUPO ? fundo.grupoRisco : "";
+  resetarSugestaoGrupo("editFundGrupoSuggestion");
   document.getElementById("editFundCnpjCvm").value = fundo.cnpjCvm || "";
   document.getElementById("editFundDate").value = toISODate(fundo.dataAdicao);
   document.getElementById("editFundEntry").value = fundo.precoEntrada ?? "";
