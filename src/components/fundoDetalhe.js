@@ -1,9 +1,9 @@
-import { getState, buscarHistorico, buscarBenchmark, buscarCadastro, buscarComposicao, addDiagnostico, editarDiagnostico, removerDiagnostico } from "../state/store.js";
+import { getState, buscarHistorico, buscarBenchmark, buscarCadastro, buscarComposicao, addDiagnostico, editarDiagnostico, removerDiagnostico, setEditMode } from "../state/store.js";
 import { voltarParaLista } from "../router.js";
 import { fmtBRL, fmtPct, fmtDateBR, fmtNumber, escapeHtml } from "../lib/format.js";
 import { BENCHMARK_POR_CATEGORIA, calcularPeriodos } from "../lib/periodos.js";
 import { calcularRentabilidadeMensalAnual, calcularIndicesRisco, calcularDrawdown, calcularVolatilidadeSerie } from "../lib/indices.js";
-import { ICON_TRIANGLE_ALERT, ICON_PENCIL } from "../lib/icons.js";
+import { ICON_TRIANGLE_ALERT, ICON_PENCIL, ICON_LOCK, ICON_LOCK_OPEN } from "../lib/icons.js";
 import * as editFundModal from "./editFundModal.js";
 
 const BENCHMARKS_DISPONIVEIS = ["CDI", "Ibovespa", "S&P 500", "IPCA"];
@@ -18,6 +18,11 @@ let benchmarkSelecionado = "CDI";
 // o padrão/comportamento de sempre; some pro fundo até ter dataAdicao.
 let escopoPorAba = { rentabilidade: "compra", indices: "compra" };
 let dadosCarregados = null; // { fundo, cadastro, historico, benchmarks: {nome: pontos} }
+// Último editMode com que a página foi renderizada — usado por
+// atualizarEditMode() pra só re-renderizar quando esse valor de fato mudou
+// (login/logout), não em toda notificação da store (ex: salvar um
+// diagnóstico também dispara notify() e re-renderizaria à toa).
+let ultimoEditModeRenderizado = null;
 const chartInstances = {};
 
 // ---- Escopo "desde a criação" x "desde a compra" ---------------------------
@@ -122,7 +127,14 @@ function renderShell(fundo, cadastro) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M19 12H5"></path><path d="m12 19-7-7 7-7"></path></svg>
         <span>Voltar para a lista</span>
       </button>
-      ${editMode ? `<button class="api-botao-utilidade-cheio icon-btn" id="editarFundoBtn" style="margin-left:auto;">${ICON_PENCIL}<span>Editar dados do fundo</span></button>` : ""}
+      <div style="margin-left:auto;display:flex;gap:10px;align-items:center;">
+        ${
+          editMode
+            ? `<button class="api-botao-utilidade-cheio icon-btn" id="editarFundoBtn">${ICON_PENCIL}<span>Editar dados do fundo</span></button>
+               <button class="api-botao-utilidade icon-btn" id="sairAdminDetalheBtn">${ICON_LOCK_OPEN}<span>Sair do modo administrador</span></button>`
+            : `<button class="api-botao-utilidade icon-btn" id="entrarAdminDetalheBtn">${ICON_LOCK}<span>Administrar</span></button>`
+        }
+      </div>
     </div>
 
     <div class="detalhe-page">
@@ -173,6 +185,12 @@ function renderShell(fundo, cadastro) {
 
   document.getElementById("voltarListaBtn").addEventListener("click", voltarParaLista);
   document.getElementById("editarFundoBtn")?.addEventListener("click", () => editFundModal.open(fundo));
+  document.getElementById("sairAdminDetalheBtn")?.addEventListener("click", () => setEditMode(false));
+  // Reaproveita o botão/modal de login já existentes na lista (adminBtn +
+  // adminLoginModal, ver src/components/adminAuth.js) — sem isso, entrar
+  // como admin exigia voltar pra lista primeiro. O modal fica fora de
+  // #listaView no HTML, então continua alcançável mesmo com a lista escondida.
+  document.getElementById("entrarAdminDetalheBtn")?.addEventListener("click", () => document.getElementById("adminBtn").click());
   container.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       abaAtiva = btn.dataset.tab;
@@ -711,6 +729,7 @@ export async function render(fundoId) {
   if (fundoAtualId !== fundoId) return; // usuário já navegou pra outro fundo
 
   dadosCarregados = { fundo, cadastro, historico, composicao };
+  ultimoEditModeRenderizado = getState().editMode;
   renderShell(fundo, cadastro);
   await renderAbaAtiva();
 }
@@ -720,4 +739,18 @@ export async function render(fundoId) {
 // novo (evita refazer o fetch a cada notificação da store).
 export function fundoCarregadoId() {
   return dadosCarregados?.fundo.id ?? null;
+}
+
+// Re-renderiza a página de detalhe sem refazer o fetch — usada pelo
+// roteador (app.js) quando o modo administrador muda (login/logout) com o
+// usuário já na página de um fundo, pra refletir na hora os botões que só
+// aparecem em modo admin (editar dados, editar/remover diagnóstico etc.)
+// sem perder a aba/escopo selecionados nem voltar pra lista.
+export function atualizarEditMode() {
+  if (!dadosCarregados) return;
+  const editModeAtual = getState().editMode;
+  if (editModeAtual === ultimoEditModeRenderizado) return;
+  ultimoEditModeRenderizado = editModeAtual;
+  renderShell(dadosCarregados.fundo, dadosCarregados.cadastro);
+  renderAbaAtiva();
 }

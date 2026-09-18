@@ -46,8 +46,11 @@ function renderAll(state) {
   if (rotaAtual.nome === "detalhe") {
     // Navegação direta por link (ex: recarregar a página): os fundos podem
     // ainda não estar carregados na primeira notificação — tenta de novo
-    // assim que carregarem.
+    // assim que carregarem. Já carregado: só precisa refletir o que mudou
+    // no modo administrador (login/logout pelo botão da própria página de
+    // detalhe, ver fundoDetalhe.js) — sem refazer o fetch.
     if (fundoDetalhe.fundoCarregadoId() !== rotaAtual.id) fundoDetalhe.render(rotaAtual.id);
+    else fundoDetalhe.atualizarEditMode();
     return;
   }
 
