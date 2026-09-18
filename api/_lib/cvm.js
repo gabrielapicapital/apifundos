@@ -210,7 +210,20 @@ export async function fetchCadastro() {
   ]);
 
   const map = new Map(legado);
-  for (const [cnpj, registro] of atual) map.set(cnpj, registro);
+  for (const [cnpj, registro] of atual) {
+    // "Data_Inicio" do registro atual é a primeira cota da CLASSE, não do
+    // fundo — pra um fundo migrado na reforma de classes de cotas (2023-24),
+    // isso é a data da migração, não a criação real (ex: fundo com histórico
+    // real desde 2013 aparecia com primeiraCota = 2025, a data em que a
+    // classe atual passou a existir). O cadastro legado guarda DT_INI_ATIV,
+    // que é a data real — usa o mais antigo dos dois quando ambos existem
+    // (nunca o mais recente, que só reflete a reestruturação administrativa).
+    const legadoRegistro = legado.get(cnpj);
+    if (legadoRegistro?.primeiraCota && (!registro.primeiraCota || legadoRegistro.primeiraCota < registro.primeiraCota)) {
+      registro.primeiraCota = legadoRegistro.primeiraCota;
+    }
+    map.set(cnpj, registro);
+  }
 
   cadastroCache = map;
   cadastroCacheAt = Date.now();
