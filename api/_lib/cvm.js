@@ -74,11 +74,21 @@ async function fetchRegistroAtual() {
   const idxFundoId = hFundo.indexOf("ID_Registro_Fundo");
   const idxFundoAdmin = hFundo.indexOf("Administrador");
   const idxFundoGestor = hFundo.indexOf("Gestor");
+  const idxFundoDataConstituicao = hFundo.indexOf("Data_Constituicao");
   const adminPorFundoId = new Map();
   const gestorPorFundoId = new Map();
+  // Constituição do FUNDO (não da classe) — é a data de criação de verdade.
+  // A "Data_Inicio"/"Data_Constituicao" de registro_classe.csv é da CLASSE
+  // DE COTAS, e pra um fundo que migrou pra estrutura de classes na reforma
+  // RCVM 175 (2023-24) ela vem igual à data de adaptação (ex: fundo com
+  // cota real desde 2013 aparecia com "Data_Inicio" = 2025, a data em que a
+  // classe atual foi criada) — não a criação real do fundo. Ver
+  // registro_fundo.csv, que tem a constituição por fundo, não por classe.
+  const constituicaoPorFundoId = new Map();
   for (const cols of rFundo) {
     adminPorFundoId.set(cols[idxFundoId], (cols[idxFundoAdmin] || "").trim());
     gestorPorFundoId.set(cols[idxFundoId], (cols[idxFundoGestor] || "").trim());
+    constituicaoPorFundoId.set(cols[idxFundoId], paraDataOuNull(cols[idxFundoDataConstituicao]));
   }
 
   const { header: hClasse, rows: rClasse } = parseDelimited(classeEntry.getData().toString("latin1"));
@@ -118,7 +128,10 @@ async function fetchRegistroAtual() {
       codigoCvm: (cols[idxCodigoCvm] || "").trim() || null,
       dataRegistro: paraDataOuNull(cols[idxDataRegistro]),
       dataConstituicao: paraDataOuNull(cols[idxDataConstituicao]),
-      primeiraCota: paraDataOuNull(cols[idxPrimeiraCota]),
+      // Prefere a constituição do FUNDO (registro_fundo.csv) — só cai pra
+      // "Data_Inicio" da classe se o fundo não tiver essa data por algum
+      // motivo (não deveria acontecer, mas evita ficar sem nenhum valor).
+      primeiraCota: constituicaoPorFundoId.get(cols[idxClasseFundoId]) || paraDataOuNull(cols[idxPrimeiraCota]),
       tipoClasse: (cols[idxTipoClasse] || "").trim() || null,
       indicadorDesempenho: (cols[idxIndicadorDesempenho] || "").trim() || null,
       classificacaoAnbima: (cols[idxClassificacaoAnbima] || "").trim() || null,
