@@ -16,7 +16,7 @@ function rowParaFundo(r) {
     quantidadeCotas: Number(r.quantidade_cotas),
     patrimonio: Number(r.patrimonio),
     pendenteCorrecao: r.pendente_correcao,
-    diagnostico: r.diagnostico,
+    diagnosticoHistorico: Array.isArray(r.diagnostico_historico) ? r.diagnostico_historico : [],
     atualizadoEm: r.atualizado_em,
   };
 }

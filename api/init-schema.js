@@ -50,6 +50,26 @@ export default async function handler(req, res) {
   // ter cadastro completo, cotistas e composição de carteira.
   await sql`ALTER TABLE fundos ADD COLUMN IF NOT EXISTS cnpj_cvm TEXT`;
 
+  // Diagnóstico do time de Asset virou um histórico com autoria (adendo
+  // "diagnostico-asset-e-admins"), não mais um campo único que se
+  // sobrescreve — cada registro é {data, autorEmail, autorNome, texto},
+  // empilhados em ordem cronológica. A coluna antiga "diagnostico" (TEXT)
+  // fica pra trás, mas se já tinha algo escrito, vira o primeiro registro
+  // do histórico em vez de simplesmente sumir.
+  await sql`ALTER TABLE fundos ADD COLUMN IF NOT EXISTS diagnostico_historico JSONB NOT NULL DEFAULT '[]'::jsonb`;
+  await sql`
+    UPDATE fundos
+    SET diagnostico_historico = jsonb_build_array(
+      jsonb_build_object(
+        'data', to_char(COALESCE(atualizado_em, criado_em, now()), 'YYYY-MM-DD'),
+        'autorEmail', null,
+        'autorNome', null,
+        'texto', diagnostico
+      )
+    )
+    WHERE diagnostico IS NOT NULL AND trim(diagnostico) != '' AND diagnostico_historico = '[]'::jsonb
+  `;
+
   // Série histórica dos benchmarks (CDI, Ibovespa, S&P 500, IPCA) — "valor"
   // é sempre um número-índice comparável (nível acumulado), não uma taxa.
   // Para o CDI/IPCA isso é a taxa composta a partir de uma base 100.

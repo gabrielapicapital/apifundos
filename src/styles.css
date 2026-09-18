@@ -234,8 +234,19 @@ tbody tr:hover .expand-chevron svg{color:var(--api-azul);}
 .pending{color:var(--api-texto-fraco) !important;font-weight:400 !important;font-style:italic;font-size:12.5px;}
 .detail-note{margin-top:10px;padding:12px;background:var(--api-fundo-quente);border-radius:var(--api-canto-ferramenta);color:var(--api-azul);}
 .diagnostico-box{background:var(--api-fundo);border:1px solid var(--api-borda);border-radius:var(--api-canto);padding:var(--api-x4);margin-top:4px;}
-.diagnostico-box textarea{width:100%;border:1px solid var(--api-borda);border-radius:var(--api-canto);padding:10px 12px;font-family:inherit;font-size:var(--api-corpo-pequeno-font-size);min-height:70px;resize:vertical;}
-.diagnostico-box button{margin-top:var(--api-x2);}
+.diagnostico-box textarea{width:100%;box-sizing:border-box;border:1px solid var(--api-borda);border-radius:var(--api-canto);padding:10px 12px;font-family:inherit;font-size:var(--api-corpo-pequeno-font-size);min-height:70px;resize:vertical;}
+
+/* Histórico de diagnóstico do time de Asset (adendo diagnostico-asset-e-
+   admins) — linha do tempo vertical: uma barra à esquerda + um marcador
+   redondo por registro, mais antigo primeiro. */
+.diag-timeline{display:flex;flex-direction:column;}
+.diag-entry{border-left:2px solid var(--api-azul);padding:2px 0 var(--api-x4) var(--api-x4);margin-left:2px;position:relative;}
+.diag-entry:last-child{padding-bottom:0;}
+.diag-entry::before{content:"";position:absolute;left:-5px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--api-azul);}
+.diag-entry-meta{font-size:12px;color:var(--api-texto-fraco);margin-bottom:3px;}
+.diag-entry-meta b{color:var(--api-azul);}
+.diag-entry-text{font-size:var(--api-corpo-pequeno-font-size);color:var(--api-texto);line-height:1.5;white-space:pre-wrap;}
+.diag-empty{color:var(--api-texto-fraco);font-style:italic;font-size:var(--api-corpo-pequeno-font-size);}
 
 /* ---- Benchmark ilustrativo ---- */
 .bench-illustrative-tag{display:inline-block;font-size:11px;background:var(--api-fundo-quente);color:var(--api-azul);padding:2px 8px;border-radius:var(--api-canto-ferramenta);margin-left:8px;font-weight:500;}

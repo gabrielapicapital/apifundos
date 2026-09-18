@@ -1,6 +1,6 @@
-import { getState, buscarHistorico, buscarBenchmark, buscarCadastro, buscarComposicao, updateDiagnostico } from "../state/store.js";
+import { getState, buscarHistorico, buscarBenchmark, buscarCadastro, buscarComposicao, addDiagnostico } from "../state/store.js";
 import { voltarParaLista } from "../router.js";
-import { fmtBRL, fmtPct, fmtDateBR, fmtNumber } from "../lib/format.js";
+import { fmtBRL, fmtPct, fmtDateBR, fmtNumber, escapeHtml } from "../lib/format.js";
 import { BENCHMARK_POR_CATEGORIA, calcularPeriodos } from "../lib/periodos.js";
 import { calcularRentabilidadeMensalAnual, calcularIndicesRisco, calcularDrawdown, calcularVolatilidadeSerie } from "../lib/indices.js";
 import { ICON_TRIANGLE_ALERT, ICON_PENCIL } from "../lib/icons.js";
@@ -241,16 +241,38 @@ function renderAbaInfo(fundo, cadastro) {
     </div>
 
     <div class="card">
-      <h3>Diagnóstico da equipe</h3>
-      <p class="sub">Nota interna, editável pelos administradores</p>
-      <div class="diagnostico-box">
-        ${
-          editMode
-            ? `<textarea id="detalheDiagText" placeholder="Pontos positivos e pontos de atenção sobre esse fundo...">${fundo.diagnostico || ""}</textarea>
-               <button id="detalheDiagSalvar">Salvar diagnóstico</button>`
-            : `<span class="${fundo.diagnostico ? "" : "pending"}">${fundo.diagnostico || "nenhum diagnóstico registrado ainda"}</span>`
-        }
-      </div>
+      <h3>Diagnóstico do time de Asset</h3>
+      <p class="sub">Registro interno de acompanhamento — visível a todos, editável pelos administradores</p>
+      ${diagnosticoTimelineHtml(fundo.diagnosticoHistorico || [])}
+      ${
+        editMode
+          ? `<div class="diagnostico-box" style="margin-top:16px;">
+               <label style="display:block;font-size:12px;color:var(--api-texto-fraco);margin-bottom:6px;">Adicionar novo registro</label>
+               <textarea id="detalheDiagText" placeholder="Ex: Sugerimos a alocação de até 5%, benefício tributário vai até março/2027."></textarea>
+               <button class="api-botao-utilidade-cheio" id="detalheDiagSalvar" style="margin-top:10px;">Salvar registro</button>
+             </div>`
+          : ""
+      }
+    </div>
+  `;
+}
+
+// Histórico com autoria do diagnóstico do time de Asset (adendo
+// "diagnostico-asset-e-admins") — linha do tempo, mais antigo primeiro
+// (ordem em que os registros já vêm salvos no banco, ver api/fundos/[id].js).
+function diagnosticoTimelineHtml(entries) {
+  if (!entries.length) return '<p class="diag-empty">nenhum registro ainda</p>';
+  return `
+    <div class="diag-timeline">
+      ${entries
+        .map(
+          (e) => `
+            <div class="diag-entry">
+              <div class="diag-entry-meta"><b>${escapeHtml(e.autorNome || e.autorEmail || "Administrador")}</b> · ${fmtDateBR(e.data)}</div>
+              <div class="diag-entry-text">${escapeHtml(e.texto)}</div>
+            </div>`
+        )
+        .join("")}
     </div>
   `;
 }
@@ -568,13 +590,15 @@ async function renderAbaAtiva() {
   if (abaAtiva === "info") {
     content.innerHTML = renderAbaInfo(fundo, cadastro);
     document.getElementById("detalheDiagSalvar")?.addEventListener("click", async () => {
-      const texto = document.getElementById("detalheDiagText").value.trim();
+      const textarea = document.getElementById("detalheDiagText");
+      const texto = textarea.value.trim();
+      if (!texto) return;
       try {
-        await updateDiagnostico(fundo.id, texto);
+        await addDiagnostico(fundo.id, texto);
         dadosCarregados.fundo = getState().fundos.find((f) => f.id === fundo.id) || fundo;
         renderAbaAtiva();
       } catch (err) {
-        alert(`Não foi possível salvar o diagnóstico: ${err.message}`);
+        alert(`Não foi possível salvar o registro: ${err.message}`);
       }
     });
   } else if (abaAtiva === "rentabilidade") {

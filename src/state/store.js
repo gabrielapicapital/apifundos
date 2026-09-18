@@ -143,8 +143,12 @@ export async function updateFundo(id, patch) {
   return atualizado;
 }
 
-export async function updateDiagnostico(id, texto) {
-  await updateFundo(id, { diagnostico: texto });
+// Acrescenta um novo registro ao histórico de diagnóstico do time de Asset
+// (adendo "diagnostico-asset-e-admins") — nunca sobrescreve os anteriores.
+// O autor é identificado no servidor pelo e-mail já autenticado (header
+// x-admin-email, enviado por adminFetch), não por nada que viaje no body.
+export async function addDiagnostico(id, texto) {
+  await updateFundo(id, { novoDiagnostico: { texto } });
 }
 
 // Histórico real de preços de um fundo (para o gráfico de evolução). Vazio

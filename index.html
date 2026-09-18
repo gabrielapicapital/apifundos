@@ -136,17 +136,17 @@
 
   <div id="detalheView" class="hidden"></div>
 
-  <!-- Login de administrador. Ver TODO em src/config.js: hoje isto só confere
-       o e-mail digitado contra uma allowlist local, sem verificar de verdade
-       quem está digitando. Não é autenticação de produção. -->
+  <!-- Login de administrador. Confere o e-mail digitado contra a lista fixa
+       em src/lib/admins.js (também conferida de novo no servidor antes de
+       qualquer escrita, ver api/_lib/auth.js) — ainda não é OAuth de
+       verdade, só confirma que o e-mail está na lista, não quem digitou. -->
   <div class="modal-overlay hidden" id="adminLoginModal">
     <div class="modal-box">
       <h3>Acesso de administrador</h3>
       <p class="sub">Somente os administradores cadastrados podem adicionar ou remover fundos e editar diagnósticos.</p>
       <label>E-mail de administrador</label>
       <input type="email" id="adminEmailInput" placeholder="seu-email@apicapital.com.br">
-      <p class="modal-error" id="adminLoginError">E-mail não está na lista de administradores.</p>
-      <p class="hint" id="adminConfigHint" style="display:none;">Nenhum administrador está configurado ainda. Veja o README (seção "Autenticação de administradores") para configurar.</p>
+      <p class="modal-error" id="adminLoginError">Este e-mail não tem permissão de administrador.</p>
       <div class="modal-actions">
         <button class="api-botao-utilidade" id="cancelAdminLoginBtn">Cancelar</button>
         <button class="api-botao-utilidade-cheio" id="confirmAdminLoginBtn">Entrar</button>

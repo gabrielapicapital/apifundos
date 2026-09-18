@@ -3,6 +3,7 @@ import { requireAdmin } from "../_lib/auth.js";
 import { buscarCotaPorCnpjData, buscarPrimeiraCotaAposData } from "../_lib/cvm.js";
 import { buscarCotaFidcPorData } from "../_lib/cvmFidc.js";
 import { buscarSerieYahoo } from "../_lib/mercado.js";
+import { nomeDoAdmin } from "../../src/lib/admins.js";
 
 // Busca a cota real (não inventada) mais próxima de uma data, pra um fundo
 // já existente que teve a data de compra ou o CNPJ/ticker alterados via
@@ -60,11 +61,14 @@ function rowParaFundo(r) {
     quantidadeCotas: Number(r.quantidade_cotas),
     patrimonio: Number(r.patrimonio),
     pendenteCorrecao: r.pendente_correcao,
-    diagnostico: r.diagnostico,
+    diagnosticoHistorico: Array.isArray(r.diagnostico_historico) ? r.diagnostico_historico : [],
   };
 }
 
 // Colunas que um PATCH pode alterar, mapeando chave do JSON -> coluna SQL.
+// diagnostico_historico fica de fora desse mapeamento genérico: um PATCH com
+// `novoDiagnostico` ACRESCENTA uma entrada ao histórico em vez de
+// sobrescrever (ver abaixo), semântica diferente de "definir esse campo".
 const CAMPOS = {
   nome: "nome",
   tipo: "tipo",
@@ -77,7 +81,6 @@ const CAMPOS = {
   precoAtual: "preco_atual",
   quantidadeCotas: "quantidade_cotas",
   pendenteCorrecao: "pendente_correcao",
-  diagnostico: "diagnostico",
 };
 
 export default async function handler(req, res) {
@@ -155,6 +158,26 @@ export default async function handler(req, res) {
     const pendenteCorrecaoFinal =
       precoEntradaAuto != null ? false : sets.includes("pendente_correcao") ? valores.pendente_correcao : atual.pendente_correcao;
 
+    // Diagnóstico do time de Asset (adendo "diagnostico-asset-e-admins"):
+    // histórico com autoria, não um campo que se sobrescreve — cada PATCH
+    // com `novoDiagnostico` ACRESCENTA uma entrada. O autor vem do e-mail já
+    // conferido por requireAdmin (header x-admin-email), nunca do que o
+    // cliente mandar no body, pra ninguém poder assinar como outra pessoa.
+    const historicoAtual = Array.isArray(atual.diagnostico_historico) ? atual.diagnostico_historico : [];
+    let diagnosticoHistoricoFinal = historicoAtual;
+    if (b.novoDiagnostico && typeof b.novoDiagnostico.texto === "string" && b.novoDiagnostico.texto.trim()) {
+      const autorEmail = (req.headers["x-admin-email"] || "").toString().trim().toLowerCase();
+      diagnosticoHistoricoFinal = [
+        ...historicoAtual,
+        {
+          data: new Date().toISOString().slice(0, 10),
+          autorEmail,
+          autorNome: nomeDoAdmin(autorEmail),
+          texto: b.novoDiagnostico.texto.trim(),
+        },
+      ];
+    }
+
     const rows = await sql`
       UPDATE fundos SET
         nome = ${valores.nome ?? atual.nome},
@@ -169,7 +192,7 @@ export default async function handler(req, res) {
         quantidade_cotas = ${quantidadeCotas},
         patrimonio = ${patrimonio},
         pendente_correcao = ${pendenteCorrecaoFinal},
-        diagnostico = ${sets.includes("diagnostico") ? valores.diagnostico : atual.diagnostico},
+        diagnostico_historico = ${JSON.stringify(diagnosticoHistoricoFinal)},
         atualizado_em = now()
       WHERE id = ${id}
       RETURNING *

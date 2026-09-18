@@ -28,3 +28,13 @@ export function toISODate(dateBR) {
   const [d, m, y] = dateBR.split("/");
   return `${y}-${m}-${d}`;
 }
+
+// Escapa texto livre digitado por um administrador (ex: diagnóstico do
+// fundo) antes de ir pro innerHTML — esse texto é visível a todos os
+// consultores, não só a quem escreveu, então precisa ser tratado como
+// entrada não confiável mesmo vindo de um admin.
+export function escapeHtml(texto) {
+  const div = document.createElement("div");
+  div.textContent = texto ?? "";
+  return div.innerHTML;
+}

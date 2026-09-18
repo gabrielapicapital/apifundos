@@ -29,7 +29,7 @@ src/                                                    frontend: components, st
 api/                                                    backend: funções serverless da Vercel (Node)
   _lib/
     db.js                  conexão com o Postgres (Neon, via DATABASE_URL)
-    auth.js                confere e-mail de admin contra ADMIN_EMAILS (variável de ambiente)
+    auth.js                confere e-mail de admin contra src/lib/admins.js (lista fixa)
     cvm.js                 busca cota e cadastro de fundos/FIDCs na CVM (sem CORS, só roda no servidor)
     mercado.js              CDI (Banco Central) e cotação de ETF (Yahoo Finance)
   fundos.js                 GET (lista) / POST (admin: adicionar fundo)
@@ -48,14 +48,15 @@ Em **Settings → Environment Variables** no projeto na Vercel:
 | Variável | Pra que serve | Como veio |
 |---|---|---|
 | `DATABASE_URL` e as demais `POSTGRES_*`/`PG*` | Conexão com o banco | Automático, criadas quando você conectou o Postgres (Neon) em Storage |
-| `ADMIN_EMAILS` | Allowlist real (no servidor) dos e-mails que podem adicionar/editar/remover fundo | Você precisa criar: lista de e-mails separados por vírgula, ex: `fulano@apicapital.com.br,ciclana@apicapital.com.br` |
 | `CRON_SECRET` | Só a Vercel consegue chamar a rotina diária de atualização de preço | Você precisa criar: qualquer string aleatória longa |
 
-Depois de criar `ADMIN_EMAILS` e `CRON_SECRET`, é preciso um novo deploy pra elas valerem (qualquer novo `git push` já resolve).
+A lista de e-mails de administrador não é mais uma variável de ambiente — é a lista fixa em `src/lib/admins.js` (ver "Autenticação de administradores" abaixo). Pra adicionar/remover um administrador, editar esse arquivo e dar `git push`.
+
+Depois de criar `CRON_SECRET`, é preciso um novo deploy pra ela valer (qualquer novo `git push` já resolve).
 
 ## Configuração inicial do banco (rodar uma vez só)
 
-Depois do primeiro deploy com `DATABASE_URL` e `ADMIN_EMAILS` configurados, chame estas duas rotas uma vez (por exemplo, com `curl` ou Postman, ou peça pro Claude Code chamar), com o header `x-admin-email` de um e-mail que esteja em `ADMIN_EMAILS`:
+Depois do primeiro deploy com `DATABASE_URL` configurado, chame estas duas rotas uma vez (por exemplo, com `curl` ou Postman, ou peça pro Claude Code chamar), com o header `x-admin-email` de um e-mail que esteja em `src/lib/admins.js`:
 
 ```bash
 curl -X POST https://apifundos-1tr8.vercel.app/api/init-schema -H "x-admin-email: seu-email@apicapital.com.br"
@@ -76,12 +77,14 @@ Isso serve os arquivos estáticos, mas as chamadas para `/api/...` vão falhar (
 
 ## Autenticação de administradores
 
-A especificação (seção 3) pede login restrito por e-mail (ex: Google OAuth com allowlist de 2 e-mails), e explicitamente rejeita senha fixa no código. OAuth de verdade ainda não existe — o que há hoje são **duas conferências por e-mail**:
+A especificação (seção 3) pede login restrito por e-mail, e explicitamente rejeita senha fixa no código. OAuth de verdade ainda não existe — o que há é uma **lista fixa de e-mails autorizados**, em `src/lib/admins.js` (email -> nome), única fonte de verdade pro app inteiro:
 
-1. No navegador (`public/admin-emails.local.json`, opcional): dá feedback rápido antes de bater no servidor, mas sozinha não protege nada — qualquer pessoa pode digitar um e-mail da lista.
-2. No servidor (`api/_lib/auth.js`, variável `ADMIN_EMAILS`): **essa é a que realmente protege** — toda rota que adiciona/edita/remove fundo confere o header `x-admin-email` contra essa lista antes de tocar no banco. Ainda não confirma *de verdade* quem está digitando o e-mail (não é OAuth), mas já impede que alguém sem o e-mail certo escreva no banco.
+1. No navegador (`src/components/adminAuth.js`, importa `src/lib/admins.js` direto): dá feedback rápido antes de bater no servidor, mas sozinha não protege nada — qualquer pessoa pode digitar um e-mail da lista.
+2. No servidor (`api/_lib/auth.js`, importa o mesmo `src/lib/admins.js`): **essa é a que realmente protege** — toda rota que adiciona/edita/remove fundo confere o header `x-admin-email` contra essa lista antes de tocar no banco. Ainda não confirma *de verdade* quem está digitando o e-mail (não é OAuth), mas já impede que alguém sem o e-mail certo escreva no banco.
 
-**Quando OAuth existir**, ele substitui as duas conferências por e-mail acima — é o próximo passo antes de considerar isso seguro para dados sensíveis de verdade.
+O nome associado a cada e-mail em `src/lib/admins.js` também é usado pra identificar autoria em qualquer registro do app (ex: histórico de diagnóstico do fundo, ver "Diagnóstico do time de Asset" na tela de detalhe).
+
+**Quando OAuth existir**, ele substitui essa allowlist — é o próximo passo antes de considerar isso seguro para dados sensíveis de verdade.
 
 ## Persistência de dados
 
@@ -114,7 +117,7 @@ A busca no topo (`searchInput`) já compara por nome e por CNPJ (ignorando pontu
 
 1. **OAuth real para administradores** (seção 3) — ver "Autenticação de administradores" acima.
 2. Hoje `quantidadeCotas`/`patrimonio` de vários fundos ainda refletem valores antigos/estimados — completar com "Valor investido" em "Editar dados do fundo" conforme o valor real de cada aporte for confirmado.
-3. Ampliar `ADMIN_EMAILS` conforme mais administradores forem definidos.
+3. Ampliar `src/lib/admins.js` conforme mais administradores forem definidos.
 4. Confirmar com o BTG se existe convênio de API institucional (opcional — CVM + Banco Central + Yahoo Finance já cobrem o essencial).
 
 ## Dados iniciais e correção histórica

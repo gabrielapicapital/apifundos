@@ -1,35 +1,16 @@
-import { ADMIN_EMAILS_PLACEHOLDER, ADMIN_EMAILS_LOCAL_CONFIG_URL } from "../config.js";
+import { isAdminEmail } from "../lib/admins.js";
 import { setEditMode, setAdminEmail } from "../state/store.js";
 import { ICON_LOCK, ICON_LOCK_OPEN } from "../lib/icons.js";
 
-let allowlist = [...ADMIN_EMAILS_PLACEHOLDER];
-
-async function loadLocalAllowlist() {
-  try {
-    const res = await fetch(new URL(ADMIN_EMAILS_LOCAL_CONFIG_URL, document.baseURI));
-    if (!res.ok) return;
-    const extra = await res.json();
-    if (Array.isArray(extra)) {
-      allowlist = [...new Set([...allowlist, ...extra.map((e) => e.toLowerCase().trim())])];
-    }
-  } catch (e) {
-    // arquivo opcional — ausência é o caso normal fora de configuração local
-  }
-}
-
 export async function init() {
-  await loadLocalAllowlist();
-
   const adminBtn = document.getElementById("adminBtn");
   const modal = document.getElementById("adminLoginModal");
   const emailInput = document.getElementById("adminEmailInput");
   const errorEl = document.getElementById("adminLoginError");
-  const configHint = document.getElementById("adminConfigHint");
 
   adminBtn.addEventListener("click", () => {
     setEditMode(false);
     errorEl.style.display = "none";
-    configHint.style.display = allowlist.length ? "none" : "block";
     emailInput.value = "";
     modal.classList.remove("hidden");
     emailInput.focus();
@@ -39,11 +20,12 @@ export async function init() {
 
   function tryLogin() {
     const email = emailInput.value.trim().toLowerCase();
-    if (email && allowlist.includes(email)) {
+    if (email && isAdminEmail(email)) {
       setAdminEmail(email);
       setEditMode(true);
       modal.classList.add("hidden");
     } else {
+      errorEl.textContent = "Este e-mail não tem permissão de administrador.";
       errorEl.style.display = "block";
     }
   }
