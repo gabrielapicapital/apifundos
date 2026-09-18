@@ -100,9 +100,9 @@ export default async function handler(req, res) {
   // sobrescreveria com uma cota velha).
   if (fim === hoje) {
     const ultimaCotaGeral = new Map([...ultimaCvm, ...ultimaEtf]);
-    for (const [fundoId, { cota }] of ultimaCotaGeral) {
+    for (const [fundoId, { cota, data }] of ultimaCotaGeral) {
       await sql`
-        UPDATE fundos SET preco_atual = ${cota}, patrimonio = quantidade_cotas * ${cota}, atualizado_em = now()
+        UPDATE fundos SET preco_atual = ${cota}, data_preco_atual = ${data}, patrimonio = quantidade_cotas * ${cota}, atualizado_em = now()
         WHERE id = ${fundoId}
       `;
     }

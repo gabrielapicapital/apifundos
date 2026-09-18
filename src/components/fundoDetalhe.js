@@ -214,7 +214,11 @@ function renderAbaInfo(fundo, cadastro) {
         <div class="metric-card"><div class="label">Adicionado em</div><div class="value">${fundo.dataAdicao ? fmtDateBR(fundo.dataAdicao) : "—"}</div></div>
         <div class="metric-card"><div class="label">Quantidade de cotas</div><div class="value">${fmtNumber(fundo.quantidadeCotas)}</div></div>
         <div class="metric-card"><div class="label">Preço de entrada</div><div class="value">${fundo.precoEntrada != null ? fmtBRL(fundo.precoEntrada) : "—"}</div></div>
-        <div class="metric-card"><div class="label">Preço atual</div><div class="value">${fmtBRL(fundo.precoAtual)}</div></div>
+        <div class="metric-card">
+          <div class="label">Preço atual</div>
+          <div class="value">${fmtBRL(fundo.precoAtual)}</div>
+          <div style="font-size:11px;color:var(--api-texto-fraco);margin-top:2px;">cota de ${fundo.dataPrecoAtual ? fmtDateBR(fundo.dataPrecoAtual) : "—"}</div>
+        </div>
         <div class="metric-card"><div class="label">Patrimônio na posição</div><div class="value">${fmtBRL(fundo.patrimonio)}</div></div>
         <div class="metric-card">
           <div class="label">Rentabilidade desde a entrada</div>

@@ -13,6 +13,7 @@ function rowParaFundo(r) {
     dataAdicao: r.data_adicao ? r.data_adicao.toISOString().slice(0, 10) : null,
     precoEntrada: r.preco_entrada != null ? Number(r.preco_entrada) : null,
     precoAtual: Number(r.preco_atual),
+    dataPrecoAtual: r.data_preco_atual ? r.data_preco_atual.toISOString().slice(0, 10) : null,
     quantidadeCotas: Number(r.quantidade_cotas),
     patrimonio: Number(r.patrimonio),
     pendenteCorrecao: r.pendente_correcao,

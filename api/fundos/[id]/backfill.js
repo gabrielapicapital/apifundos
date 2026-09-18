@@ -110,7 +110,7 @@ export default async function handler(req, res) {
   const ultima = coleta.ultimaCotaPorFundo.get(f.id);
   if (ultima && fim === hojeReal) {
     await sql`
-      UPDATE fundos SET preco_atual = ${ultima.cota}, patrimonio = quantidade_cotas * ${ultima.cota}, atualizado_em = now()
+      UPDATE fundos SET preco_atual = ${ultima.cota}, data_preco_atual = ${ultima.data}, patrimonio = quantidade_cotas * ${ultima.cota}, atualizado_em = now()
       WHERE id = ${f.id}
     `;
     relatorio.cotaAtualizada = true;

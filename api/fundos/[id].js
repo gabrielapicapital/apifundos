@@ -55,16 +55,18 @@ async function buscarCotaNaData(tipo, cnpjOuTicker, dataISO) {
 // o CNPJ/ticker muda em "Editar dados do fundo" — sem isso o campo ficava
 // travado em "0" pra sempre depois de um CNPJ errado, mesmo já corrigido,
 // até a rotina diária passar de novo (até 24h) ou puxar histórico completo.
+// Devolve a DATA junto com a cota — sem isso não dava pra saber se "preço
+// atual" é de hoje ou de um FIDC com informe mensal atrasado vários meses.
 async function buscarCotaAtual(tipo, cnpjOuTicker) {
   if (tipo === "ETF") {
     const r = await buscarCotacaoEtf(cnpjOuTicker).catch(() => null);
-    return r ? r.preco : null;
+    return r ? { cota: r.preco, data: r.data } : null;
   }
   const r = await buscarCotaMaisRecente(cnpjOuTicker).catch(() => null);
-  if (r) return r.cota;
+  if (r) return { cota: r.cota, data: r.data };
   if (tipo === "FIDC") {
     const rMensal = await buscarCotaFidcMaisRecente(cnpjOuTicker).catch(() => null);
-    if (rMensal) return rMensal.cota;
+    if (rMensal) return { cota: rMensal.cota, data: rMensal.data };
   }
   return null;
 }
@@ -81,6 +83,7 @@ function rowParaFundo(r) {
     dataAdicao: r.data_adicao ? r.data_adicao.toISOString().slice(0, 10) : null,
     precoEntrada: r.preco_entrada != null ? Number(r.preco_entrada) : null,
     precoAtual: Number(r.preco_atual),
+    dataPrecoAtual: r.data_preco_atual ? r.data_preco_atual.toISOString().slice(0, 10) : null,
     quantidadeCotas: Number(r.quantidade_cotas),
     patrimonio: Number(r.patrimonio),
     pendenteCorrecao: r.pendente_correcao,
@@ -196,8 +199,14 @@ export default async function handler(req, res) {
     if ((cnpjMudou || (precoAtualFoiEnviado && precoAtualEnviado == null)) && cnpjFinal) {
       precoAtualAuto = await buscarCotaAtual(tipoFinal, cnpjFinal).catch(() => null);
     }
-    const precoAtualFinal = precoAtualAuto ?? precoAtualEnviado ?? Number(atual.preco_atual);
+    const precoAtualFinal = precoAtualAuto?.cota ?? precoAtualEnviado ?? Number(atual.preco_atual);
     const patrimonio = quantidadeCotas * precoAtualFinal;
+    // Data da cota usada em "preço atual": vem da busca automática quando
+    // ela achou algo; um valor digitado à mão é assumido como "de hoje"
+    // (é o que o admin está informando nesse instante); sem busca nem
+    // valor novo, preserva a data que já tinha.
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    const dataPrecoAtualFinal = precoAtualAuto?.data ?? (precoAtualEnviado != null ? hojeISO : atual.data_preco_atual);
 
     // Diagnóstico do time de Asset (adendo "diagnostico-asset-e-admins" +
     // pedido de editar/remover registro): histórico com autoria, não um
@@ -248,6 +257,7 @@ export default async function handler(req, res) {
         data_adicao = ${dataAdicaoFinal},
         preco_entrada = ${precoEntradaFinal},
         preco_atual = ${precoAtualFinal},
+        data_preco_atual = ${dataPrecoAtualFinal},
         quantidade_cotas = ${quantidadeCotas},
         patrimonio = ${patrimonio},
         pendente_correcao = ${pendenteCorrecaoFinal},

@@ -51,6 +51,13 @@ export default async function handler(req, res) {
   // ter cadastro completo, cotistas e composição de carteira.
   await sql`ALTER TABLE fundos ADD COLUMN IF NOT EXISTS cnpj_cvm TEXT`;
 
+  // Data da cota usada em "preço atual" — sem isso não dava pra saber se o
+  // preço mostrado é de hoje ou (caso comum em FIDC, que só publica informe
+  // mensal com atraso) de vários meses atrás. Atualizada em todo lugar que
+  // já atualiza preco_atual: rotina diária, backfill (por fundo e em lote)
+  // e a busca automática ao editar CNPJ/ticker em "Editar dados do fundo".
+  await sql`ALTER TABLE fundos ADD COLUMN IF NOT EXISTS data_preco_atual DATE`;
+
   // Diagnóstico do time de Asset virou um histórico com autoria (adendo
   // "diagnostico-asset-e-admins"), não mais um campo único que se
   // sobrescreve — cada registro é {data, autorEmail, autorNome, texto},

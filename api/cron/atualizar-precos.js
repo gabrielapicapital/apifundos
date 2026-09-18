@@ -57,7 +57,7 @@ export default async function handler(req, res) {
 
       const patrimonio = Number(f.quantidade_cotas) * cota;
       await sql`
-        UPDATE fundos SET preco_atual = ${cota}, patrimonio = ${patrimonio}, atualizado_em = now()
+        UPDATE fundos SET preco_atual = ${cota}, data_preco_atual = ${data}, patrimonio = ${patrimonio}, atualizado_em = now()
         WHERE id = ${f.id}
       `;
       await sql`
