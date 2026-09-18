@@ -1,4 +1,4 @@
-import { getState, buscarHistorico, buscarBenchmark, buscarCadastro, buscarComposicao, addDiagnostico } from "../state/store.js";
+import { getState, buscarHistorico, buscarBenchmark, buscarCadastro, buscarComposicao, addDiagnostico, editarDiagnostico, removerDiagnostico } from "../state/store.js";
 import { voltarParaLista } from "../router.js";
 import { fmtBRL, fmtPct, fmtDateBR, fmtNumber, escapeHtml } from "../lib/format.js";
 import { BENCHMARK_POR_CATEGORIA, calcularPeriodos } from "../lib/periodos.js";
@@ -56,14 +56,16 @@ function scopeToggleHtml(fundo, aba, subtitulo) {
   const temData = fundoTemDataCompra(fundo);
   return `
     <div class="card" style="padding-bottom:16px;">
-      <div class="card-header-row" style="align-items:center;">
-        <div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:16px;">
+        <div style="flex:0 0 auto;">
           <h3 style="margin-bottom:2px;">Período de exibição</h3>
           <p class="sub" style="margin:0;">${subtitulo}</p>
         </div>
-        <div class="scope-toggle" data-scope-toggle="${aba}">
-          <button type="button" data-scope="criacao" class="${escopo === "criacao" || !temData ? "active" : ""}">Desde a criação do fundo</button>
-          <button type="button" data-scope="compra" class="${escopo === "compra" && temData ? "active" : ""}" ${temData ? "" : 'disabled title="Não disponível: fundo sem data de compra registrada"'}>Desde a compra da cota</button>
+        <div style="flex:1;display:flex;justify-content:center;min-width:220px;">
+          <div class="scope-toggle scope-toggle-lg" data-scope-toggle="${aba}">
+            <button type="button" data-scope="criacao" class="${escopo === "criacao" || !temData ? "active" : ""}">Desde a criação do fundo</button>
+            <button type="button" data-scope="compra" class="${escopo === "compra" && temData ? "active" : ""}" ${temData ? "" : 'disabled title="Não disponível: fundo sem data de compra registrada"'}>Desde a compra da cota</button>
+          </div>
         </div>
       </div>
       ${
@@ -243,7 +245,7 @@ function renderAbaInfo(fundo, cadastro) {
     <div class="card">
       <h3>Diagnóstico do time de Asset</h3>
       <p class="sub">Registro interno de acompanhamento — visível a todos, editável pelos administradores</p>
-      ${diagnosticoTimelineHtml(fundo.diagnosticoHistorico || [])}
+      ${diagnosticoTimelineHtml(fundo.diagnosticoHistorico || [], editMode)}
       ${
         editMode
           ? `<div class="diagnostico-box" style="margin-top:16px;">
@@ -260,21 +262,80 @@ function renderAbaInfo(fundo, cadastro) {
 // Histórico com autoria do diagnóstico do time de Asset (adendo
 // "diagnostico-asset-e-admins") — linha do tempo, mais antigo primeiro
 // (ordem em que os registros já vêm salvos no banco, ver api/fundos/[id].js).
-function diagnosticoTimelineHtml(entries) {
+// Editar/remover só aparece em modo administrador, e só se a entrada já tem
+// "id" (entradas bem antigas sem id ganham um no próximo PATCH do fundo).
+function diagnosticoTimelineHtml(entries, editMode) {
   if (!entries.length) return '<p class="diag-empty">nenhum registro ainda</p>';
   return `
     <div class="diag-timeline">
       ${entries
         .map(
           (e) => `
-            <div class="diag-entry">
-              <div class="diag-entry-meta"><b>${escapeHtml(e.autorNome || e.autorEmail || "Administrador")}</b> · ${fmtDateBR(e.data)}</div>
+            <div class="diag-entry" data-diag-id="${e.id || ""}">
+              <div class="diag-entry-meta">
+                <span><b>${escapeHtml(e.autorNome || e.autorEmail || "Administrador")}</b> · ${fmtDateBR(e.data)}${e.editadoEm ? " · editado" : ""}</span>
+                ${
+                  editMode && e.id
+                    ? `<span class="diag-entry-actions">
+                         <button type="button" class="diag-action-btn" data-diag-action="editar">Editar</button>
+                         <button type="button" class="diag-action-btn diag-action-btn-remover" data-diag-action="remover">Remover</button>
+                       </span>`
+                    : ""
+                }
+              </div>
               <div class="diag-entry-text">${escapeHtml(e.texto)}</div>
             </div>`
         )
         .join("")}
     </div>
   `;
+}
+
+// Liga os botões "Editar"/"Remover" de cada registro do diagnóstico.
+// "Editar" troca o texto daquela entrada por um textarea in-line (sem
+// re-renderizar a aba inteira, só aquele bloco); "Remover" confirma antes.
+// `aoSalvar` recarrega o fundo do servidor e re-renderiza a aba.
+function ligarDiagnosticoAcoes(container, fundoId, aoSalvar) {
+  container.querySelectorAll("[data-diag-action]").forEach((btn) => {
+    const entryEl = btn.closest(".diag-entry");
+    const diagId = entryEl.dataset.diagId;
+    btn.addEventListener("click", async () => {
+      if (btn.dataset.diagAction === "remover") {
+        if (!confirm("Remover esse registro do histórico de diagnóstico? Essa ação não pode ser desfeita.")) return;
+        try {
+          await removerDiagnostico(fundoId, diagId);
+          await aoSalvar();
+        } catch (err) {
+          alert(`Não foi possível remover: ${err.message}`);
+        }
+        return;
+      }
+
+      // "Editar": substitui o texto da entrada por um textarea in-line.
+      const textoAtual = entryEl.querySelector(".diag-entry-text").textContent;
+      entryEl.querySelector(".diag-entry-actions")?.remove();
+      entryEl.querySelector(".diag-entry-text").outerHTML = `
+        <div class="diag-edit-box">
+          <textarea class="diag-edit-textarea">${escapeHtml(textoAtual)}</textarea>
+          <div class="diag-edit-actions">
+            <button type="button" class="api-botao-utilidade-cheio" data-diag-salvar>Salvar</button>
+            <button type="button" class="api-botao-utilidade" data-diag-cancelar>Cancelar</button>
+          </div>
+        </div>
+      `;
+      entryEl.querySelector("[data-diag-cancelar]").addEventListener("click", () => renderAbaAtiva());
+      entryEl.querySelector("[data-diag-salvar]").addEventListener("click", async () => {
+        const novoTexto = entryEl.querySelector(".diag-edit-textarea").value.trim();
+        if (!novoTexto) return;
+        try {
+          await editarDiagnostico(fundoId, diagId, novoTexto);
+          await aoSalvar();
+        } catch (err) {
+          alert(`Não foi possível salvar: ${err.message}`);
+        }
+      });
+    });
+  });
 }
 
 // ---- Aba 2: Rentabilidade --------------------------------------------------
@@ -589,18 +650,22 @@ async function renderAbaAtiva() {
 
   if (abaAtiva === "info") {
     content.innerHTML = renderAbaInfo(fundo, cadastro);
+    const recarregarEReRenderizar = async () => {
+      dadosCarregados.fundo = getState().fundos.find((f) => f.id === fundo.id) || fundo;
+      await renderAbaAtiva();
+    };
     document.getElementById("detalheDiagSalvar")?.addEventListener("click", async () => {
       const textarea = document.getElementById("detalheDiagText");
       const texto = textarea.value.trim();
       if (!texto) return;
       try {
         await addDiagnostico(fundo.id, texto);
-        dadosCarregados.fundo = getState().fundos.find((f) => f.id === fundo.id) || fundo;
-        renderAbaAtiva();
+        await recarregarEReRenderizar();
       } catch (err) {
         alert(`Não foi possível salvar o registro: ${err.message}`);
       }
     });
+    ligarDiagnosticoAcoes(content, fundo.id, recarregarEReRenderizar);
   } else if (abaAtiva === "rentabilidade") {
     content.innerHTML = renderAbaRentabilidade(fundo, historico);
     document.getElementById("benchmarkSelect").addEventListener("change", (e) => {

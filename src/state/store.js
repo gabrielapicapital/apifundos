@@ -151,6 +151,17 @@ export async function addDiagnostico(id, texto) {
   await updateFundo(id, { novoDiagnostico: { texto } });
 }
 
+// Edita o texto de um registro já existente (por id) — qualquer
+// administrador pode editar/remover qualquer registro, mesmo modelo de
+// permissão já usado no resto do app.
+export async function editarDiagnostico(id, diagnosticoId, texto) {
+  await updateFundo(id, { editarDiagnostico: { id: diagnosticoId, texto } });
+}
+
+export async function removerDiagnostico(id, diagnosticoId) {
+  await updateFundo(id, { removerDiagnostico: { id: diagnosticoId } });
+}
+
 // Histórico real de preços de um fundo (para o gráfico de evolução). Vazio
 // quando ainda não há pontos suficientes (ver src/components/fundoDetalhe.js).
 export async function buscarHistorico(id) {

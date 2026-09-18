@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { sql } from "./_lib/db.js";
 import { requireAdmin } from "./_lib/auth.js";
 
@@ -69,6 +70,19 @@ export default async function handler(req, res) {
     )
     WHERE diagnostico IS NOT NULL AND trim(diagnostico) != '' AND diagnostico_historico = '[]'::jsonb
   `;
+
+  // Registros de diagnóstico gravados antes de "id" existir (pedido de
+  // editar/remover registro) não têm esse campo — sem ele não dá pra mirar
+  // uma entrada específica. api/fundos/[id].js já preenche na hora pra
+  // qualquer PATCH novo, mas isso só cobre fundo que sofrer um PATCH depois
+  // — preenche aqui pra já cobrir tudo que já existe, mesmo sem UUID nativo
+  // no Postgres (gerado em JS, um UPDATE por fundo, não são muitos).
+  const comDiagnostico = await sql`SELECT id, diagnostico_historico FROM fundos WHERE diagnostico_historico != '[]'::jsonb`;
+  for (const f of comDiagnostico) {
+    if (f.diagnostico_historico.every((e) => e.id)) continue;
+    const comId = f.diagnostico_historico.map((e) => (e.id ? e : { ...e, id: randomUUID() }));
+    await sql`UPDATE fundos SET diagnostico_historico = ${JSON.stringify(comId)} WHERE id = ${f.id}`;
+  }
 
   // Série histórica dos benchmarks (CDI, Ibovespa, S&P 500, IPCA) — "valor"
   // é sempre um número-índice comparável (nível acumulado), não uma taxa.

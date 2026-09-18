@@ -243,10 +243,17 @@ tbody tr:hover .expand-chevron svg{color:var(--api-azul);}
 .diag-entry{border-left:2px solid var(--api-azul);padding:2px 0 var(--api-x4) var(--api-x4);margin-left:2px;position:relative;}
 .diag-entry:last-child{padding-bottom:0;}
 .diag-entry::before{content:"";position:absolute;left:-5px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--api-azul);}
-.diag-entry-meta{font-size:12px;color:var(--api-texto-fraco);margin-bottom:3px;}
+.diag-entry-meta{font-size:12px;color:var(--api-texto-fraco);margin-bottom:3px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
 .diag-entry-meta b{color:var(--api-azul);}
 .diag-entry-text{font-size:var(--api-corpo-pequeno-font-size);color:var(--api-texto);line-height:1.5;white-space:pre-wrap;}
 .diag-empty{color:var(--api-texto-fraco);font-style:italic;font-size:var(--api-corpo-pequeno-font-size);}
+
+.diag-entry-actions{display:flex;gap:12px;flex-shrink:0;}
+.diag-action-btn{background:none;border:none;padding:0;font-family:inherit;font-size:11.5px;font-weight:600;color:var(--api-acao);cursor:pointer;text-decoration:underline;}
+.diag-action-btn-remover{color:var(--api-erro);}
+.diag-edit-box{margin-top:2px;}
+.diag-edit-textarea{width:100%;box-sizing:border-box;border:1px solid var(--api-borda);border-radius:var(--api-canto-ferramenta);padding:8px 10px;font-family:inherit;font-size:var(--api-corpo-pequeno-font-size);min-height:64px;resize:vertical;}
+.diag-edit-actions{display:flex;gap:8px;margin-top:8px;}
 
 /* ---- Benchmark ilustrativo ---- */
 .bench-illustrative-tag{display:inline-block;font-size:11px;background:var(--api-fundo-quente);color:var(--api-azul);padding:2px 8px;border-radius:var(--api-canto-ferramenta);margin-left:8px;font-weight:500;}
@@ -350,6 +357,8 @@ tbody tr:hover .expand-chevron svg{color:var(--api-azul);}
    acima, só que menor, por ser um controle secundário dentro do card. */
 .scope-toggle{display:inline-flex;gap:4px;background:var(--api-fundo-bloco);padding:4px;border-radius:var(--api-canto-ferramenta);flex-wrap:wrap;}
 .scope-toggle button{background:none;border:none;border-radius:var(--api-canto-ferramenta);padding:8px 14px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--api-texto-fraco);cursor:pointer;white-space:nowrap;}
+.scope-toggle-lg{padding:5px;}
+.scope-toggle-lg button{padding:10px 20px;font-size:14px;}
 .scope-toggle button:hover:not(:disabled){color:var(--api-azul);}
 .scope-toggle button.active{background:var(--api-azul);color:var(--api-sobre-escuro);}
 .scope-toggle button:disabled{opacity:.45;cursor:not-allowed;}

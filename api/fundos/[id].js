@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { sql } from "../_lib/db.js";
 import { requireAdmin } from "../_lib/auth.js";
 import { buscarCotaPorCnpjData, buscarPrimeiraCotaAposData } from "../_lib/cvm.js";
@@ -158,24 +159,42 @@ export default async function handler(req, res) {
     const pendenteCorrecaoFinal =
       precoEntradaAuto != null ? false : sets.includes("pendente_correcao") ? valores.pendente_correcao : atual.pendente_correcao;
 
-    // Diagnóstico do time de Asset (adendo "diagnostico-asset-e-admins"):
-    // histórico com autoria, não um campo que se sobrescreve — cada PATCH
-    // com `novoDiagnostico` ACRESCENTA uma entrada. O autor vem do e-mail já
-    // conferido por requireAdmin (header x-admin-email), nunca do que o
-    // cliente mandar no body, pra ninguém poder assinar como outra pessoa.
-    const historicoAtual = Array.isArray(atual.diagnostico_historico) ? atual.diagnostico_historico : [];
+    // Diagnóstico do time de Asset (adendo "diagnostico-asset-e-admins" +
+    // pedido de editar/remover registro): histórico com autoria, não um
+    // campo que se sobrescreve. Três ações possíveis num PATCH, mutuamente
+    // exclusivas: `novoDiagnostico` ACRESCENTA uma entrada, `editarDiagnostico`
+    // troca o texto de uma entrada existente (por id) e `removerDiagnostico`
+    // tira uma entrada do histórico. O autor de uma entrada NOVA vem do
+    // e-mail já conferido por requireAdmin (header x-admin-email), nunca do
+    // que o cliente mandar no body, pra ninguém poder assinar como outra
+    // pessoa — mas qualquer administrador pode editar/remover qualquer
+    // entrada (mesmo modelo de permissão já usado no resto do app).
+    //
+    // Entradas gravadas antes de "id" existir não têm esse campo — sem ele
+    // não dá pra mirar uma entrada específica pra editar/remover (a posição
+    // no array pode mudar depois de uma remoção). Preenche na hora se faltar.
+    const historicoAtual = (Array.isArray(atual.diagnostico_historico) ? atual.diagnostico_historico : []).map((e) =>
+      e.id ? e : { ...e, id: randomUUID() }
+    );
     let diagnosticoHistoricoFinal = historicoAtual;
     if (b.novoDiagnostico && typeof b.novoDiagnostico.texto === "string" && b.novoDiagnostico.texto.trim()) {
       const autorEmail = (req.headers["x-admin-email"] || "").toString().trim().toLowerCase();
       diagnosticoHistoricoFinal = [
         ...historicoAtual,
         {
+          id: randomUUID(),
           data: new Date().toISOString().slice(0, 10),
           autorEmail,
           autorNome: nomeDoAdmin(autorEmail),
           texto: b.novoDiagnostico.texto.trim(),
         },
       ];
+    } else if (b.editarDiagnostico && b.editarDiagnostico.id && typeof b.editarDiagnostico.texto === "string" && b.editarDiagnostico.texto.trim()) {
+      diagnosticoHistoricoFinal = historicoAtual.map((e) =>
+        e.id === b.editarDiagnostico.id ? { ...e, texto: b.editarDiagnostico.texto.trim(), editadoEm: new Date().toISOString().slice(0, 10) } : e
+      );
+    } else if (b.removerDiagnostico && b.removerDiagnostico.id) {
+      diagnosticoHistoricoFinal = historicoAtual.filter((e) => e.id !== b.removerDiagnostico.id);
     }
 
     const rows = await sql`
