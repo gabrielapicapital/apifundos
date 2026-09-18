@@ -5,6 +5,16 @@ import AdmZip from "adm-zip";
 // rodam no servidor (funções da Vercel), nunca no client.
 
 const INFORME_DIARIO_BASE = "https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS";
+// A CVM só publica um arquivo por MÊS (inf_diario_fi_AAAAMM.zip) a partir de
+// 2021 — anos anteriores (existem desde 2000) só estão em HIST/, um zip por
+// ANO INTEIRO (inf_diario_fi_AAAA.zip, ~60MB, com os 12 CSVs mensais dentro)
+// com colunas ligeiramente diferentes: CNPJ_FUNDO em vez de
+// CNPJ_FUNDO_CLASSE (não existiam classes de cotas ainda) e sem a coluna
+// ID_SUBCLASSE. Sem isso, "desde a criação do fundo" (adendo
+// toggle-criacao-vs-compra) não acha nenhum dado real pra fundo nenhum
+// criado antes de 2021 — a maioria dos fundos já cadastrados no app.
+const INFORME_DIARIO_HIST_BASE = `${INFORME_DIARIO_BASE}/HIST`;
+const PRIMEIRO_ANO_ARQUIVO_MENSAL = 2021;
 // A CVM mantém dois cadastros em paralelo (reforma de 2023-24, fundos com
 // estrutura de classes de cotas):
 //  - registro_fundo_classe.zip: o atual. CNPJ_Classe é o mesmo CNPJ usado no
@@ -276,33 +286,19 @@ const informeCache = new Map(); // monthKey -> Map(cnpjDigits -> [{data, vlQuota
 const informeCacheAt = new Map();
 const INFORME_TTL_MS = 60 * 60 * 1000; // 1h (o arquivo do mês corrente muda todo dia útil)
 
-async function fetchInformeMes(key) {
-  const cached = informeCache.get(key);
-  if (cached && Date.now() - (informeCacheAt.get(key) || 0) < INFORME_TTL_MS) {
-    return cached;
-  }
-
-  const url = `${INFORME_DIARIO_BASE}/inf_diario_fi_${key}.zip`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    // Mês sem arquivo publicado ainda (ex: mês corrente muito cedo) ou fora
-    // do intervalo coberto pela CVM.
-    const empty = new Map();
-    informeCache.set(key, empty);
-    informeCacheAt.set(key, Date.now());
-    return empty;
-  }
-  const buf = Buffer.from(await res.arrayBuffer());
-  const zip = new AdmZip(buf);
-  const entry = zip.getEntries().find((e) => e.entryName.endsWith(".csv"));
-  if (!entry) throw new Error(`ZIP da CVM sem CSV dentro: ${key}`);
-  const text = entry.getData().toString("utf8");
-
+// Faz o parsing de um CSV de Informe Diário (mensal, 2021+, ou um dos 12
+// dentro do zip anual de HIST/, anos anteriores) num Map cnpjDigits -> linhas.
+// As colunas batem quase todas — a diferença é CNPJ_FUNDO_CLASSE (mensal,
+// pós reforma de classes) vs CNPJ_FUNDO (histórico, fundo sem classes ainda)
+// e a ausência de ID_SUBCLASSE no formato antigo (nesse caso `cols[-1]` é
+// sempre undefined, então o filtro de subclasse não afeta o formato antigo).
+function parseInformeCsvTexto(text) {
   const lines = text.split("\n");
   // NR_COTST é a última coluna do cabeçalho — sem tirar o \r (o arquivo usa
   // quebra de linha CRLF), o indexOf dela nunca batia e ficava sempre -1.
   const header = lines[0].replace(/\r$/, "").split(";");
-  const idxCnpj = header.indexOf("CNPJ_FUNDO_CLASSE");
+  const idxCnpjClasse = header.indexOf("CNPJ_FUNDO_CLASSE");
+  const idxCnpj = idxCnpjClasse !== -1 ? idxCnpjClasse : header.indexOf("CNPJ_FUNDO");
   const idxData = header.indexOf("DT_COMPTC");
   const idxQuota = header.indexOf("VL_QUOTA");
   const idxSubclasse = header.indexOf("ID_SUBCLASSE");
@@ -325,6 +321,67 @@ async function fetchInformeMes(key) {
     if (!byCnpj.has(cnpjDigits)) byCnpj.set(cnpjDigits, []);
     byCnpj.get(cnpjDigits).push(entryData);
   }
+  return byCnpj;
+}
+
+// Anos antes de PRIMEIRO_ANO_ARQUIVO_MENSAL: um zip só com os 12 CSVs
+// mensais dentro (ver comentário em INFORME_DIARIO_HIST_BASE) — baixa e
+// processa o ano inteiro de uma vez, populando o cache mensal normal pros
+// 12 meses, em vez de rebaixar o mesmo zip de nome inteiro pra cada mês.
+async function fetchInformeAno(ano, keyPedido) {
+  const url = `${INFORME_DIARIO_HIST_BASE}/inf_diario_fi_${ano}.zip`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    // Ano fora do que a CVM disponibiliza (fundo criado antes do início da
+    // série histórica, ou erro de digitação numa data muito antiga) — marca
+    // os 12 meses como vazios de uma vez, pra não tentar de novo dentro do TTL.
+    for (let m = 1; m <= 12; m++) {
+      const k = `${ano}${String(m).padStart(2, "0")}`;
+      informeCache.set(k, new Map());
+      informeCacheAt.set(k, Date.now());
+    }
+    return informeCache.get(keyPedido);
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  const zip = new AdmZip(buf);
+  for (const entry of zip.getEntries()) {
+    const m = entry.entryName.match(/inf_diario_fi_(\d{6})\.csv$/);
+    if (!m) continue;
+    const mesKey = m[1];
+    if (informeCache.has(mesKey)) continue; // já populado por uma chamada anterior desse mesmo ano
+    const mapaMes = parseInformeCsvTexto(entry.getData().toString("utf8"));
+    informeCache.set(mesKey, mapaMes);
+    informeCacheAt.set(mesKey, Date.now());
+  }
+  return informeCache.get(keyPedido) || new Map();
+}
+
+async function fetchInformeMes(key) {
+  const cached = informeCache.get(key);
+  if (cached && Date.now() - (informeCacheAt.get(key) || 0) < INFORME_TTL_MS) {
+    return cached;
+  }
+
+  const ano = Number(key.slice(0, 4));
+  if (ano < PRIMEIRO_ANO_ARQUIVO_MENSAL) {
+    return fetchInformeAno(ano, key);
+  }
+
+  const url = `${INFORME_DIARIO_BASE}/inf_diario_fi_${key}.zip`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    // Mês sem arquivo publicado ainda (ex: mês corrente muito cedo) ou fora
+    // do intervalo coberto pela CVM.
+    const empty = new Map();
+    informeCache.set(key, empty);
+    informeCacheAt.set(key, Date.now());
+    return empty;
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  const zip = new AdmZip(buf);
+  const entry = zip.getEntries().find((e) => e.entryName.endsWith(".csv"));
+  if (!entry) throw new Error(`ZIP da CVM sem CSV dentro: ${key}`);
+  const byCnpj = parseInformeCsvTexto(entry.getData().toString("utf8"));
 
   informeCache.set(key, byCnpj);
   informeCacheAt.set(key, Date.now());
