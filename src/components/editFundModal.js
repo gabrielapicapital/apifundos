@@ -32,10 +32,13 @@ export function init() {
     const errBox = document.getElementById("editFundError");
 
     const precoEntrada = precoEntradaRaw !== "" ? parseFloat(precoEntradaRaw) : null;
-    const precoAtual = parseFloat(precoAtualRaw);
+    // Em branco = "busca sozinho" (ver hint no modal e auto-busca no
+    // servidor, api/fundos/[id].js) — null é o sinal de "não informado",
+    // igual já funciona pra precoEntrada; nunca bloqueia o salvamento.
+    const precoAtual = precoAtualRaw !== "" ? parseFloat(precoAtualRaw) : null;
     const valorInvestido = valorInvestidoRaw !== "" ? parseFloat(valorInvestidoRaw) : null;
 
-    if (!nome || !precoAtual || precoAtual <= 0) {
+    if (!nome) {
       errBox.style.display = "block";
       return;
     }
@@ -79,7 +82,10 @@ export function open(fundo) {
   document.getElementById("editFundCnpjCvm").value = fundo.cnpjCvm || "";
   document.getElementById("editFundDate").value = toISODate(fundo.dataAdicao);
   document.getElementById("editFundEntry").value = fundo.precoEntrada ?? "";
-  document.getElementById("editFundCurrent").value = fundo.precoAtual;
+  // "0" nunca é um preço atual de verdade (fundo cujo CNPJ ainda não
+  // resolveu, ver auto-busca no PATCH) — abre em branco pra já convidar a
+  // busca automática, em vez de bloquear o salvamento com um "0" inválido.
+  document.getElementById("editFundCurrent").value = fundo.precoAtual > 0 ? fundo.precoAtual : "";
   document.getElementById("editFundValue").value = "";
   syncPendenteFromEntry();
   document.getElementById("editFundError").style.display = "none";

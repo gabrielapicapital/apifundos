@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "../_lib/db.js";
 import { requireAdmin } from "../_lib/auth.js";
-import { buscarCotaPorCnpjData, buscarPrimeiraCotaAposData } from "../_lib/cvm.js";
-import { buscarCotaFidcPorData } from "../_lib/cvmFidc.js";
-import { buscarSerieYahoo } from "../_lib/mercado.js";
+import { buscarCotaPorCnpjData, buscarPrimeiraCotaAposData, buscarCotaMaisRecente } from "../_lib/cvm.js";
+import { buscarCotaFidcPorData, buscarCotaFidcMaisRecente } from "../_lib/cvmFidc.js";
+import { buscarSerieYahoo, buscarCotacaoEtf } from "../_lib/mercado.js";
 import { nomeDoAdmin } from "../../src/lib/admins.js";
 
 // Busca a cota real (não inventada) mais próxima de uma data, pra um fundo
@@ -44,6 +44,28 @@ async function buscarCotaNaData(tipo, cnpjOuTicker, dataISO) {
   const fidc = await buscarCotaFidcPorData(cnpjOuTicker, dataISO).catch(() => null);
   if (fidc) return fidc.cota;
 
+  return null;
+}
+
+// Cota mais recente disponível (não numa data específica) — mesma cascata
+// de fallback já usada pela rotina diária (api/cron/atualizar-precos.js):
+// ETF via Yahoo, Fundo/FIDC via Informe Diário da CVM, e Informe Mensal
+// como último recurso só pra FIDC (que não publica diário). Usada aqui pra
+// preencher "Preço atual" sozinho quando o admin deixa em branco ou quando
+// o CNPJ/ticker muda em "Editar dados do fundo" — sem isso o campo ficava
+// travado em "0" pra sempre depois de um CNPJ errado, mesmo já corrigido,
+// até a rotina diária passar de novo (até 24h) ou puxar histórico completo.
+async function buscarCotaAtual(tipo, cnpjOuTicker) {
+  if (tipo === "ETF") {
+    const r = await buscarCotacaoEtf(cnpjOuTicker).catch(() => null);
+    return r ? r.preco : null;
+  }
+  const r = await buscarCotaMaisRecente(cnpjOuTicker).catch(() => null);
+  if (r) return r.cota;
+  if (tipo === "FIDC") {
+    const rMensal = await buscarCotaFidcMaisRecente(cnpjOuTicker).catch(() => null);
+    if (rMensal) return rMensal.cota;
+  }
   return null;
 }
 
@@ -114,9 +136,7 @@ export default async function handler(req, res) {
       }
     }
 
-    const precoAtual = valores.preco_atual ?? Number(atual.preco_atual);
     const quantidadeCotas = valores.quantidade_cotas ?? Number(atual.quantidade_cotas);
-    const patrimonio = quantidadeCotas * precoAtual;
 
     const dataAdicaoAntiga = atual.data_adicao ? atual.data_adicao.toISOString().slice(0, 10) : null;
     const dataAdicaoFinal = sets.includes("data_adicao") ? valores.data_adicao : dataAdicaoAntiga;
@@ -158,6 +178,26 @@ export default async function handler(req, res) {
     // pelo mesmo salvamento.
     const pendenteCorrecaoFinal =
       precoEntradaAuto != null ? false : sets.includes("pendente_correcao") ? valores.pendente_correcao : atual.pendente_correcao;
+
+    // Preço atual: mesma convenção do preço de entrada acima — o campo vem
+    // sempre presente no body (em branco = null), e null é o sinal de
+    // "busca sozinho". Dispara a busca quando o CNPJ/ticker mudou (cota
+    // antiga não serve mais pro fundo certo) OU quando o admin deixou em
+    // branco de propósito (ex: forçar atualização, ou um fundo que ficou
+    // travado em 0 por um CNPJ errado já corrigido). Nunca sobrescreve um
+    // valor que o admin digitou explicitamente.
+    const precoAtualFoiEnviado = sets.includes("preco_atual");
+    const precoAtualEnviado = precoAtualFoiEnviado ? valores.preco_atual : undefined;
+    // "Enviado em branco" (precoAtualFoiEnviado true, valor null) dispara a
+    // busca; campo nem vindo no body (ex: PATCH só de diagnóstico) NÃO —
+    // sem essa distinção, salvar um registro de diagnóstico dispararia uma
+    // busca de cota à toa em todo fundo.
+    let precoAtualAuto = null;
+    if ((cnpjMudou || (precoAtualFoiEnviado && precoAtualEnviado == null)) && cnpjFinal) {
+      precoAtualAuto = await buscarCotaAtual(tipoFinal, cnpjFinal).catch(() => null);
+    }
+    const precoAtualFinal = precoAtualAuto ?? precoAtualEnviado ?? Number(atual.preco_atual);
+    const patrimonio = quantidadeCotas * precoAtualFinal;
 
     // Diagnóstico do time de Asset (adendo "diagnostico-asset-e-admins" +
     // pedido de editar/remover registro): histórico com autoria, não um
@@ -207,7 +247,7 @@ export default async function handler(req, res) {
         cnpj_cvm = ${sets.includes("cnpj_cvm") ? valores.cnpj_cvm : atual.cnpj_cvm},
         data_adicao = ${dataAdicaoFinal},
         preco_entrada = ${precoEntradaFinal},
-        preco_atual = ${precoAtual},
+        preco_atual = ${precoAtualFinal},
         quantidade_cotas = ${quantidadeCotas},
         patrimonio = ${patrimonio},
         pendente_correcao = ${pendenteCorrecaoFinal},
