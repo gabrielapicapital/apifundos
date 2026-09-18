@@ -334,6 +334,15 @@ tbody tr:hover .expand-chevron svg{color:var(--api-azul);}
 .tab-btn:hover{color:var(--api-azul);}
 .tab-btn.active{background:var(--api-azul);color:var(--api-sobre-escuro);}
 
+/* Seletor secundário "desde a criação"/"desde a compra" (adendo
+   toggle-criacao-vs-compra) — mesmas cores/formato da pílula de .tabs
+   acima, só que menor, por ser um controle secundário dentro do card. */
+.scope-toggle{display:inline-flex;gap:4px;background:var(--api-fundo-bloco);padding:4px;border-radius:var(--api-canto-ferramenta);flex-wrap:wrap;}
+.scope-toggle button{background:none;border:none;border-radius:var(--api-canto-ferramenta);padding:8px 14px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--api-texto-fraco);cursor:pointer;white-space:nowrap;}
+.scope-toggle button:hover:not(:disabled){color:var(--api-azul);}
+.scope-toggle button.active{background:var(--api-azul);color:var(--api-sobre-escuro);}
+.scope-toggle button:disabled{opacity:.45;cursor:not-allowed;}
+
 .card{background:var(--api-fundo);border-radius:var(--api-canto);padding:var(--api-x6);}
 .card h3{margin:0 0 2px;font-family:var(--api-titulo-pagina-font-family);font-weight:400;font-size:17px;color:var(--api-azul);}
 .card .sub{margin:0 0 var(--api-x4);font-size:var(--api-corpo-pequeno-font-size);color:var(--api-texto-fraco);}

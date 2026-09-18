@@ -30,6 +30,14 @@ export const BENCHMARKS_DISPONIVEIS = ["CDI", "Ibovespa", "S&P 500", "IPCA"];
 // folgado, só pra não sair baixando décadas de arquivo por causa de um erro
 // de digitação na data de adição.
 const TETO_SEGURANCA_MESES = 120; // 10 anos
+// Teto bem mais largo pra buscar "desde a criação do fundo" (adendo
+// toggle-criacao-vs-compra): o motivo do teto de 10 anos acima é proteger
+// contra erro de digitação numa data de compra digitada por humano — não se
+// aplica aqui, já que o ponto de partida vem da própria CVM (primeira_cota
+// do cadastro, ver cadastroCompleto.js), não de um campo digitado. Ainda
+// assim mantém um teto (em vez de ilimitado) pra não sair baixando décadas
+// de Informe Diário por causa de um cadastro com data claramente errada.
+const TETO_SEGURANCA_CRIACAO_MESES = 240; // 20 anos
 const LOTE = 300; // linhas por transação — reduz de "1 round-trip por linha" pra "1 a cada 300"
 
 export function limitarInicio(dataAdicaoISO, hojeISO) {
@@ -38,6 +46,39 @@ export function limitarInicio(dataAdicaoISO, hojeISO) {
   limite.setMonth(limite.getMonth() - TETO_SEGURANCA_MESES);
   const entrada = new Date(dataAdicaoISO);
   return entrada > limite ? dataAdicaoISO : limite.toISOString().slice(0, 10);
+}
+
+function tetoCriacaoISO(hojeISO) {
+  const hoje = new Date(hojeISO);
+  const limite = new Date(hoje);
+  limite.setMonth(limite.getMonth() - TETO_SEGURANCA_CRIACAO_MESES);
+  return limite.toISOString().slice(0, 10);
+}
+
+// Data de início a usar pra popular historico_precos — desde a criação do
+// fundo (primeira cota na CVM) quando já se sabe essa data, não só desde a
+// compra. Isso faz historico_precos guardar a série completa de uma vez só:
+// o toggle "desde a criação" x "desde a compra" (adendo
+// toggle-criacao-vs-compra) vira só um filtro no cliente por dataAdicao,
+// sem precisar de tabela/coluna nova.
+export function inicioParaCriacao({ tipo, primeiraCotaISO, dataAdicaoISO, hojeISO }) {
+  const teto = tetoCriacaoISO(hojeISO);
+  if (tipo === "ETF") {
+    // ETF não tem cadastro/primeira cota na CVM (usa ticker, não CNPJ) — pede
+    // o intervalo mais largo permitido (teto de segurança) e deixa a Yahoo
+    // decidir onde a série real começa (buscarSerieYahoo +
+    // removerPatamarInicial já descartam o trecho anterior à listagem real,
+    // ver mercado.js).
+    return teto;
+  }
+  if (primeiraCotaISO) {
+    return primeiraCotaISO > teto ? primeiraCotaISO : teto;
+  }
+  // Cadastro ainda não sincronizado pra esse fundo: sem saber quando ele
+  // nasceu, cai pro que já se conhece (data de compra) — passa a buscar
+  // desde a criação de verdade assim que o cadastro sincronizar (acontece
+  // automaticamente no backfill por fundo, ver api/fundos/[id]/backfill.js).
+  return limitarInicio(dataAdicaoISO, hojeISO);
 }
 
 export async function gravarHistoricoEmLotes(linhas) {

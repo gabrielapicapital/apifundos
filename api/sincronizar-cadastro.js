@@ -35,8 +35,8 @@ export default async function handler(req, res) {
 
   for (const f of fundos) {
     try {
-      const ok = await sincronizarCadastroFundo(f.id, f.cnpj);
-      if (ok) relatorio.cadastro.atualizados++;
+      const registro = await sincronizarCadastroFundo(f.id, f.cnpj);
+      if (registro) relatorio.cadastro.atualizados++;
       else relatorio.cadastro.semCadastro.push(f.id);
     } catch (err) {
       relatorio.cadastro.erros.push({ id: f.id, erro: err.message });

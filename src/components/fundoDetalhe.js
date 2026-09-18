@@ -13,8 +13,84 @@ const TIPO_LABEL_SINGULAR = { Fundo: "Fundo", ETF: "ETF", FIDC: "FIDC" };
 let fundoAtualId = null;
 let abaAtiva = "info";
 let benchmarkSelecionado = "CDI";
+// Escopo do período mostrado nas abas Rentabilidade/Índices (adendo
+// toggle-criacao-vs-compra) — cada aba tem o seu, independente. "compra" é
+// o padrão/comportamento de sempre; some pro fundo até ter dataAdicao.
+let escopoPorAba = { rentabilidade: "compra", indices: "compra" };
 let dadosCarregados = null; // { fundo, cadastro, historico, benchmarks: {nome: pontos} }
 const chartInstances = {};
+
+// ---- Escopo "desde a criação" x "desde a compra" ---------------------------
+// historico_precos guarda a série completa desde a criação do fundo, quando
+// já se sabe essa data (ver api/_lib/backfill.js, inicioParaCriacao) — o
+// corte "desde a compra" é só um filtro por dataAdicao em cima dela, feito
+// aqui no cliente.
+
+function fundoTemDataCompra(fundo) {
+  return Boolean(fundo.dataAdicao);
+}
+
+// Escopo de fato usado: sem data de compra registrada, só "desde a criação"
+// faz sentido (adendo fallback-sem-data-compra), mesmo que o seletor da aba
+// esteja com "compra" guardado de uma visita anterior a outro fundo.
+function escopoEfetivo(fundo, aba) {
+  return fundoTemDataCompra(fundo) ? escopoPorAba[aba] : "criacao";
+}
+
+function historicoNoEscopo(fundo, historico, escopo) {
+  if (escopo === "compra" && fundoTemDataCompra(fundo)) {
+    return historico.filter((p) => p.data >= fundo.dataAdicao);
+  }
+  return historico;
+}
+
+function textoEscopo(escopo) {
+  return escopo === "criacao" ? "Desde a criação do fundo" : "Desde a compra da cota";
+}
+
+// Cabeçalho "Período de exibição" com o seletor de 2 opções + aviso quando o
+// fundo não tem data de compra registrada — mesmo bloco pras abas
+// Rentabilidade e Índices, cada uma com seu próprio id de toggle/aba.
+function scopeToggleHtml(fundo, aba, subtitulo) {
+  const escopo = escopoPorAba[aba];
+  const temData = fundoTemDataCompra(fundo);
+  return `
+    <div class="card" style="padding-bottom:16px;">
+      <div class="card-header-row" style="align-items:center;">
+        <div>
+          <h3 style="margin-bottom:2px;">Período de exibição</h3>
+          <p class="sub" style="margin:0;">${subtitulo}</p>
+        </div>
+        <div class="scope-toggle" data-scope-toggle="${aba}">
+          <button type="button" data-scope="criacao" class="${escopo === "criacao" || !temData ? "active" : ""}">Desde a criação do fundo</button>
+          <button type="button" data-scope="compra" class="${escopo === "compra" && temData ? "active" : ""}" ${temData ? "" : 'disabled title="Não disponível: fundo sem data de compra registrada"'}>Desde a compra da cota</button>
+        </div>
+      </div>
+      ${
+        temData
+          ? ""
+          : `<div class="banner" style="margin-top:12px;"><span class="banner-icon">${ICON_TRIANGLE_ALERT}</span><span>Este fundo não tem data de compra registrada — mostrando o histórico completo desde a criação do fundo.</span></div>`
+      }
+    </div>
+  `;
+}
+
+// Liga os cliques do seletor de escopo de uma aba: atualiza qual botão fica
+// ativo (sem re-renderizar o card inteiro, só o "active") e roda `aoMudar`
+// pra atualizar o gráfico/tabela dependentes — reaproveitado pelas abas
+// Rentabilidade e Índices.
+function ligarScopeToggle(container, aba, aoMudar) {
+  const toggle = container.querySelector(`[data-scope-toggle="${aba}"]`);
+  if (!toggle) return;
+  toggle.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled || btn.classList.contains("active")) return;
+      escopoPorAba[aba] = btn.dataset.scope;
+      toggle.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b === btn));
+      aoMudar();
+    });
+  });
+}
 
 function destruirGraficos() {
   for (const key of Object.keys(chartInstances)) {
@@ -232,6 +308,8 @@ function tabelaMensalHtml(mensal) {
 function renderAbaRentabilidade(fundo, historico, benchmarksCache) {
   const opcoes = BENCHMARKS_DISPONIVEIS.map((b) => `<option value="${b}" ${b === benchmarkSelecionado ? "selected" : ""}>${b}</option>`).join("");
   return `
+    ${scopeToggleHtml(fundo, "rentabilidade", "Vale para o gráfico de evolução e a tabela de rentabilidade histórica abaixo")}
+
     <div class="card">
       <div class="card-header-row">
         <div>
@@ -249,15 +327,17 @@ function renderAbaRentabilidade(fundo, historico, benchmarksCache) {
 
     <div class="card">
       <h3>Rentabilidade histórica</h3>
-      <p class="sub">Fundo (linha de cima) e % do CDI daquele mês (linha de baixo)</p>
+      <p class="sub" id="rentMensalNota">Fundo (linha de cima) e % do CDI daquele mês (linha de baixo)</p>
       <div id="rentMensalTabela">Carregando…</div>
     </div>
   `;
 }
 
 async function carregarRentabilidade(fundo, historico) {
+  const escopo = escopoEfetivo(fundo, "rentabilidade");
+  const historicoEscopo = historicoNoEscopo(fundo, historico, escopo);
   const benchPontos = await buscarBenchmark(benchmarkSelecionado);
-  const dados = historico.length >= 2 && benchPontos.length >= 2 ? calcularPeriodos(historico, benchPontos, benchmarkSelecionado) : null;
+  const dados = historicoEscopo.length >= 2 && benchPontos.length >= 2 ? calcularPeriodos(historicoEscopo, benchPontos, benchmarkSelecionado) : null;
 
   const notaEl = document.getElementById("rentTituloNota");
   const tabelaEl = document.getElementById("rentPeriodoTabela");
@@ -267,7 +347,7 @@ async function carregarRentabilidade(fundo, historico) {
     notaEl.textContent = "Sem histórico real suficiente ainda pra montar o gráfico.";
     tabelaEl.innerHTML = "";
   } else {
-    notaEl.textContent = `Desde ${fmtDateBR(dados.fundoSerie[0].data)}`;
+    notaEl.textContent = `${textoEscopo(escopo)} — primeiro ponto em ${fmtDateBR(dados.fundoSerie[0].data)}`;
     tabelaEl.innerHTML = tabelaPeriodoHtml(dados);
 
     const canvas = document.getElementById("detalheChart");
@@ -303,10 +383,12 @@ async function carregarRentabilidade(fundo, historico) {
   }
 
   const mensalEl = document.getElementById("rentMensalTabela");
+  const mensalNotaEl = document.getElementById("rentMensalNota");
   if (mensalEl) {
     const cdiPontos = benchmarkSelecionado === "CDI" ? benchPontos : await buscarBenchmark("CDI");
-    const mensal = calcularRentabilidadeMensalAnual(historico, cdiPontos);
+    const mensal = calcularRentabilidadeMensalAnual(historicoEscopo, cdiPontos);
     mensalEl.innerHTML = tabelaMensalHtml(mensal);
+    if (mensalNotaEl) mensalNotaEl.textContent = `Fundo (linha de cima) e % do CDI daquele mês (linha de baixo) — ${textoEscopo(escopo).toLowerCase()}`;
   }
 }
 
@@ -338,21 +420,23 @@ function tabelaIndicesHtml(indices) {
   `;
 }
 
-function renderAbaIndices() {
+function renderAbaIndices(fundo) {
   return `
+    ${scopeToggleHtml(fundo, "indices", "Vale para os gráficos de Drawdown e Volatilidade abaixo")}
+
     <div class="card">
       <h3>Índices de rentabilidade e risco</h3>
-      <p class="sub">Calculados a partir do histórico real de cota do fundo, contra o CDI como taxa livre de risco</p>
+      <p class="sub">Calculados a partir do histórico real de cota do fundo, contra o CDI como taxa livre de risco. A coluna "Total" usa a série completa desde a criação do fundo, independente do seletor acima — as demais janelas já são relativas a hoje.</p>
       <div id="indicesTabela">Carregando…</div>
     </div>
     <div class="card">
       <h3>Drawdown</h3>
-      <p class="sub">Queda em relação ao pico anterior, série completa</p>
+      <p class="sub" id="drawdownNota">Queda em relação ao pico anterior</p>
       <div class="evolucao-chart-wrap"><div class="evolucao-chart-canvas-box" style="height:220px;"><canvas id="drawdownChart"></canvas></div></div>
     </div>
     <div class="card">
       <h3>Volatilidade</h3>
-      <p class="sub">Janela móvel de 21 pregões (~1 mês), anualizada</p>
+      <p class="sub" id="volatilidadeNota">Janela móvel de 21 pregões (~1 mês), anualizada</p>
       <div class="evolucao-chart-wrap"><div class="evolucao-chart-canvas-box" style="height:220px;"><canvas id="volatilidadeChart"></canvas></div></div>
     </div>
   `;
@@ -378,16 +462,29 @@ function graficoLinhaSimples(canvasId, chaveInstancia, pontos, cor, sufixo) {
   });
 }
 
-function carregarIndices(historico) {
+function carregarIndices(fundo, historico) {
   const cdiPromise = buscarBenchmark("CDI");
   return cdiPromise.then((cdiPontos) => {
     const el = document.getElementById("indicesTabela");
     if (!el) return;
+    // A tabela de índices (janelas fixas + "Total") sempre usa a série
+    // completa, independente do seletor de escopo — só os dois gráficos
+    // abaixo (Drawdown/Volatilidade) respeitam o corte (adendo
+    // toggle-criacao-vs-compra: "as janelas já são relativas a hoje
+    // independentemente da data de início").
     const indices = historico.length >= 3 ? calcularIndicesRisco(historico, cdiPontos) : null;
     el.innerHTML = tabelaIndicesHtml(indices);
 
-    graficoLinhaSimples("drawdownChart", "drawdown", calcularDrawdown(historico), "#B71313", "%");
-    graficoLinhaSimples("volatilidadeChart", "volatilidade", calcularVolatilidadeSerie(historico), "#0D2A54", "%");
+    const escopo = escopoEfetivo(fundo, "indices");
+    const historicoEscopo = historicoNoEscopo(fundo, historico, escopo);
+    const sufixoNota = ` — ${textoEscopo(escopo).toLowerCase()}`;
+    const drawdownNotaEl = document.getElementById("drawdownNota");
+    const volatilidadeNotaEl = document.getElementById("volatilidadeNota");
+    if (drawdownNotaEl) drawdownNotaEl.textContent = `Queda em relação ao pico anterior${sufixoNota}`;
+    if (volatilidadeNotaEl) volatilidadeNotaEl.textContent = `Janela móvel de 21 pregões (~1 mês), anualizada${sufixoNota}`;
+
+    graficoLinhaSimples("drawdownChart", "drawdown", calcularDrawdown(historicoEscopo), "#B71313", "%");
+    graficoLinhaSimples("volatilidadeChart", "volatilidade", calcularVolatilidadeSerie(historicoEscopo), "#0D2A54", "%");
   });
 }
 
@@ -486,10 +583,12 @@ async function renderAbaAtiva() {
       benchmarkSelecionado = e.target.value;
       carregarRentabilidade(fundo, historico);
     });
+    ligarScopeToggle(content, "rentabilidade", () => carregarRentabilidade(fundo, historico));
     carregarRentabilidade(fundo, historico);
   } else if (abaAtiva === "indices") {
-    content.innerHTML = renderAbaIndices();
-    carregarIndices(historico);
+    content.innerHTML = renderAbaIndices(fundo);
+    ligarScopeToggle(content, "indices", () => carregarIndices(fundo, historico));
+    carregarIndices(fundo, historico);
   } else if (abaAtiva === "carteira") {
     content.innerHTML = renderAbaCarteira(composicao);
     if (composicao) carregarCarteira(composicao);
@@ -499,6 +598,7 @@ async function renderAbaAtiva() {
 export async function render(fundoId) {
   fundoAtualId = fundoId;
   abaAtiva = "info";
+  escopoPorAba = { rentabilidade: "compra", indices: "compra" };
   destruirGraficos();
 
   const container = document.getElementById("detalheView");

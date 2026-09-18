@@ -2,7 +2,7 @@ import { sql } from "../../_lib/db.js";
 import { requireAdmin } from "../../_lib/auth.js";
 import {
   BENCHMARKS_DISPONIVEIS,
-  limitarInicio,
+  inicioParaCriacao,
   gravarHistoricoEmLotes,
   coletarHistoricoCvm,
   coletarHistoricoEtf,
@@ -14,16 +14,19 @@ import { sincronizarCadastroFundo } from "../../_lib/cadastroCompleto.js";
 // POST /api/fundos/{id}/backfill — versão de UM fundo só do backfill em
 // lote (api/backfill-historico.js), disparada automaticamente pelo modal
 // "Adicionar fundo" assim que um fundo com CNPJ/ticker + data de compra é
-// salvo: busca de uma vez toda a cota real desde a data de compra até hoje
-// (em vez de esperar a rotina diária acumular um ponto por dia), atualiza
-// preco_atual pra cota de hoje e garante o benchmark da categoria dele.
+// salvo: busca de uma vez toda a cota real desde a criação do fundo (não só
+// desde a data de compra — ver inicioParaCriacao em ../../_lib/backfill.js e
+// o adendo toggle-criacao-vs-compra) até hoje, atualiza preco_atual pra cota
+// de hoje e garante o benchmark da categoria dele. historico_precos guarda
+// a série completa; o toggle "desde a criação"/"desde a compra" na tela de
+// detalhe é só um filtro por dataAdicao em cima dela.
 //
 // Um fundo antigo pode precisar de muitos meses de Informe Diário (cada um
 // um arquivo grande, baixado inteiro só pra tirar as linhas de um CNPJ) —
 // isso pode passar dos ~90s de orçamento da função numa chamada só. Por
 // isso aceita `desde`/`ate` (query, formato AAAA-MM-DD) opcionais pra
 // processar um pedaço do intervalo por vez, chamado várias vezes em
-// sequência por fora (ver README) até cobrir a data de adição real.
+// sequência por fora (ver README) até cobrir a data de início real.
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Método não permitido" });
@@ -32,7 +35,12 @@ export default async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
 
   const { id } = req.query;
-  const existente = await sql`SELECT id, tipo, categoria, cnpj_ou_ticker, data_adicao FROM fundos WHERE id = ${id}`;
+  const existente = await sql`
+    SELECT f.id, f.tipo, f.categoria, f.cnpj_ou_ticker, f.data_adicao, fc.primeira_cota
+    FROM fundos f
+    LEFT JOIN fundos_cadastro fc ON fc.fundo_id = f.id
+    WHERE f.id = ${id}
+  `;
   if (!existente.length) {
     res.status(404).json({ error: "Fundo não encontrado." });
     return;
@@ -44,9 +52,35 @@ export default async function handler(req, res) {
   }
 
   const hojeReal = new Date().toISOString().slice(0, 10);
-  const inicioCompleto = limitarInicio(f.data_adicao.toISOString().slice(0, 10), hojeReal);
+  const dataAdicaoISO = f.data_adicao.toISOString().slice(0, 10);
+  // "Primeira chamada" é definida pelo chamador ter omitido `desde` (não
+  // pelo valor calculado de inicioCompleto, que só dá pra saber DEPOIS de
+  // sincronizar o cadastro) — é o sinal de que ainda não processamos nenhum
+  // pedaço desse backfill fatiado.
+  const primeiraChamada = typeof req.query.desde !== "string";
+
+  const relatorio = { pontosGravados: 0, cotaAtualizada: false, benchmarksGravados: 0, cadastroSincronizado: false, erros: [], intervalo: null };
+
+  // Cadastro completo (adendo "estrutura-dados-completa") só precisa ser
+  // buscado uma vez, não em todo pedaço de um backfill fatiado — além dos
+  // outros campos, é ele quem traz/atualiza a "primeira cota" usada abaixo
+  // pra saber desde quando o fundo existe de verdade. ETF não tem CNPJ/
+  // cadastro na CVM (usa ticker).
+  let primeiraCotaISO = f.primeira_cota ? f.primeira_cota.toISOString().slice(0, 10) : null;
+  if (f.tipo !== "ETF" && primeiraChamada) {
+    try {
+      const registro = await sincronizarCadastroFundo(f.id, f.cnpj_ou_ticker);
+      relatorio.cadastroSincronizado = Boolean(registro);
+      if (registro?.primeiraCota) primeiraCotaISO = registro.primeiraCota;
+    } catch (err) {
+      relatorio.erros.push({ etapa: "cadastro", erro: err.message });
+    }
+  }
+
+  const inicioCompleto = inicioParaCriacao({ tipo: f.tipo, primeiraCotaISO, dataAdicaoISO, hojeISO: hojeReal });
   const desde = typeof req.query.desde === "string" && req.query.desde > inicioCompleto ? req.query.desde : inicioCompleto;
   const fim = typeof req.query.ate === "string" && req.query.ate < hojeReal ? req.query.ate : hojeReal;
+  relatorio.intervalo = { desde, ate: fim };
 
   const alvo = {
     id: f.id,
@@ -55,19 +89,6 @@ export default async function handler(req, res) {
     cnpjOuTicker: f.cnpj_ou_ticker,
     inicio: desde,
   };
-
-  const relatorio = { pontosGravados: 0, cotaAtualizada: false, benchmarksGravados: 0, cadastroSincronizado: false, erros: [], intervalo: { desde, ate: fim } };
-
-  // Cadastro completo (adendo "estrutura-dados-completa") só precisa ser
-  // buscado uma vez, não em todo pedaço de um backfill fatiado. ETF não tem
-  // CNPJ/cadastro na CVM (usa ticker).
-  if (f.tipo !== "ETF" && desde === inicioCompleto) {
-    try {
-      relatorio.cadastroSincronizado = await sincronizarCadastroFundo(f.id, f.cnpj_ou_ticker);
-    } catch (err) {
-      relatorio.erros.push({ etapa: "cadastro", erro: err.message });
-    }
-  }
 
   const coleta =
     f.tipo === "ETF"

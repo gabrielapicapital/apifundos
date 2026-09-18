@@ -55,10 +55,14 @@ export async function gravarCadastroCompleto(fundoId, registro) {
 // classe/cad_fi) não publica esse campo. Se essa busca falhar (ex: fundo sem
 // publicação recente), o COALESCE no upsert acima preserva o valor já salvo
 // antes em vez de apagar com null.
+//
+// Retorna o registro gravado (com primeiraCota, usado pelo backfill pra
+// saber desde quando buscar o histórico "desde a criação do fundo" — ver
+// api/_lib/backfill.js) ou null se a CVM não tem cadastro pra esse CNPJ.
 export async function sincronizarCadastroFundo(fundoId, cnpjOuTicker) {
   const cadastro = await fetchCadastro();
   const registro = cadastro.get(normalizeCnpj(cnpjOuTicker));
-  if (!registro) return false;
+  if (!registro) return null;
 
   const cotistas = await buscarCotistasMaisRecente(cnpjOuTicker).catch(() => null);
   if (cotistas) {
@@ -67,5 +71,5 @@ export async function sincronizarCadastroFundo(fundoId, cnpjOuTicker) {
   }
 
   await gravarCadastroCompleto(fundoId, registro);
-  return true;
+  return registro;
 }
