@@ -1,5 +1,6 @@
 import { updateFundo, backfillFundo } from "../state/store.js";
 import { toISODate } from "../lib/format.js";
+import * as fundoDetalhe from "./fundoDetalhe.js";
 
 const modal = () => document.getElementById("editFundModal");
 
@@ -58,6 +59,10 @@ export function init() {
     try {
       const atualizado = await updateFundo(id, patch);
       modal().classList.add("hidden");
+      // Editando com a página de detalhe desse mesmo fundo já aberta (ver
+      // botão de administrador direto nela): sem isso, os valores editados
+      // só apareciam depois de sair e voltar pra página.
+      if (fundoDetalhe.fundoCarregadoId() === id) fundoDetalhe.atualizarDadosFundo();
       // Data de compra ou CNPJ/ticker mudaram: o servidor já buscou a cota
       // da nova data sozinho (ver api/fundos/[id].js), mas o histórico
       // completo pro gráfico/índices só vem buscando de novo desde essa

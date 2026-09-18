@@ -750,6 +750,18 @@ export function fundoCarregadoId() {
 // usuário já na página de um fundo, pra refletir na hora os botões que só
 // aparecem em modo admin (editar dados, editar/remover diagnóstico etc.)
 // sem perder a aba/escopo selecionados nem voltar pra lista.
+// Sincroniza dadosCarregados.fundo com a versão mais recente da store e
+// re-renderiza a aba atual — usada por quem edita o fundo por fora (ex:
+// editFundModal.js, "Editar dados do fundo") enquanto o usuário já está na
+// página de detalhe dele. Sem isso, salvar ali só refletia depois de sair
+// e voltar pra página (dadosCarregados.fundo ficava com a versão antiga).
+export function atualizarDadosFundo() {
+  if (!dadosCarregados) return;
+  const fundoAtualizado = getState().fundos.find((f) => f.id === dadosCarregados.fundo.id);
+  if (fundoAtualizado) dadosCarregados.fundo = fundoAtualizado;
+  renderAbaAtiva();
+}
+
 export function atualizarEditMode() {
   if (!dadosCarregados) return;
   const editModeAtual = getState().editMode;
