@@ -324,35 +324,60 @@ function parseInformeCsvTexto(text) {
   return byCnpj;
 }
 
+// coletarHistoricoCvm pede vários meses em paralelo (concorrencia=6) — sem
+// deduplicar, pedir 6 meses do MESMO ano ainda não cacheado dispararia 6
+// downloads concorrentes do mesmo zip de ~60MB (visto na prática: picos de
+// memória que fizeram meses inteiros voltar vazios silenciosamente, sem
+// nenhum erro — sintoma de o processo ter ficado sem recursos no meio do
+// parsing, não de falta de dado real). Esse cache de promises em voo garante
+// só 1 download por ano mesmo com várias chamadas concorrentes pedindo
+// meses diferentes do mesmo ano.
+const informeAnoEmVoo = new Map(); // ano -> Promise<void>
+
 // Anos antes de PRIMEIRO_ANO_ARQUIVO_MENSAL: um zip só com os 12 CSVs
 // mensais dentro (ver comentário em INFORME_DIARIO_HIST_BASE) — baixa e
 // processa o ano inteiro de uma vez, populando o cache mensal normal pros
 // 12 meses, em vez de rebaixar o mesmo zip de nome inteiro pra cada mês.
 async function fetchInformeAno(ano, keyPedido) {
-  const url = `${INFORME_DIARIO_HIST_BASE}/inf_diario_fi_${ano}.zip`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    // Ano fora do que a CVM disponibiliza (fundo criado antes do início da
-    // série histórica, ou erro de digitação numa data muito antiga) — marca
-    // os 12 meses como vazios de uma vez, pra não tentar de novo dentro do TTL.
-    for (let m = 1; m <= 12; m++) {
-      const k = `${ano}${String(m).padStart(2, "0")}`;
-      informeCache.set(k, new Map());
-      informeCacheAt.set(k, Date.now());
-    }
-    return informeCache.get(keyPedido);
+  if (!informeAnoEmVoo.has(ano)) {
+    informeAnoEmVoo.set(
+      ano,
+      (async () => {
+        try {
+          const url = `${INFORME_DIARIO_HIST_BASE}/inf_diario_fi_${ano}.zip`;
+          const res = await fetch(url);
+          if (!res.ok) {
+            // Ano fora do que a CVM disponibiliza (fundo criado antes do
+            // início da série histórica, ou erro de digitação numa data
+            // muito antiga) — marca os 12 meses como vazios de uma vez, pra
+            // não tentar de novo dentro do TTL.
+            for (let m = 1; m <= 12; m++) {
+              const k = `${ano}${String(m).padStart(2, "0")}`;
+              informeCache.set(k, new Map());
+              informeCacheAt.set(k, Date.now());
+            }
+            return;
+          }
+          const buf = Buffer.from(await res.arrayBuffer());
+          const zip = new AdmZip(buf);
+          for (const entry of zip.getEntries()) {
+            const m = entry.entryName.match(/inf_diario_fi_(\d{6})\.csv$/);
+            if (!m) continue;
+            const mesKey = m[1];
+            if (informeCache.has(mesKey)) continue; // já populado por uma chamada anterior desse mesmo ano
+            const mapaMes = parseInformeCsvTexto(entry.getData().toString("utf8"));
+            informeCache.set(mesKey, mapaMes);
+            informeCacheAt.set(mesKey, Date.now());
+          }
+        } finally {
+          // Não deixa em voo pra sempre — uma tentativa futura (ex: TTL
+          // expirado, ou essa mesma tentativa ter falhado) pode tentar de novo.
+          informeAnoEmVoo.delete(ano);
+        }
+      })()
+    );
   }
-  const buf = Buffer.from(await res.arrayBuffer());
-  const zip = new AdmZip(buf);
-  for (const entry of zip.getEntries()) {
-    const m = entry.entryName.match(/inf_diario_fi_(\d{6})\.csv$/);
-    if (!m) continue;
-    const mesKey = m[1];
-    if (informeCache.has(mesKey)) continue; // já populado por uma chamada anterior desse mesmo ano
-    const mapaMes = parseInformeCsvTexto(entry.getData().toString("utf8"));
-    informeCache.set(mesKey, mapaMes);
-    informeCacheAt.set(mesKey, Date.now());
-  }
+  await informeAnoEmVoo.get(ano);
   return informeCache.get(keyPedido) || new Map();
 }
 
