@@ -173,10 +173,10 @@ function renderShell(fundo, cadastro) {
       </div>
 
       <div class="tabs">
-        <button class="tab-btn active" data-tab="info">Informações</button>
-        <button class="tab-btn" data-tab="rentabilidade">Rentabilidade</button>
-        <button class="tab-btn" data-tab="indices">Índices</button>
-        <button class="tab-btn" data-tab="carteira">Carteira</button>
+        <button class="tab-btn${abaAtiva === "info" ? " active" : ""}" data-tab="info">Informações</button>
+        <button class="tab-btn${abaAtiva === "rentabilidade" ? " active" : ""}" data-tab="rentabilidade">Rentabilidade</button>
+        <button class="tab-btn${abaAtiva === "indices" ? " active" : ""}" data-tab="indices">Índices</button>
+        <button class="tab-btn${abaAtiva === "carteira" ? " active" : ""}" data-tab="carteira">Carteira</button>
       </div>
 
       <div id="detalheTabContent"></div>
@@ -759,6 +759,11 @@ export function atualizarDadosFundo() {
   if (!dadosCarregados) return;
   const fundoAtualizado = getState().fundos.find((f) => f.id === dadosCarregados.fundo.id);
   if (fundoAtualizado) dadosCarregados.fundo = fundoAtualizado;
+  // renderShell também, não só renderAbaAtiva(): nome, CNPJ, status,
+  // administrador/gestor e o botão "Editar dados do fundo" ficam no
+  // cabeçalho (fora de #detalheTabContent), então só re-renderizar a aba
+  // deixaria esses campos com a versão antiga até sair e voltar da página.
+  renderShell(dadosCarregados.fundo, dadosCarregados.cadastro);
   renderAbaAtiva();
 }
 
